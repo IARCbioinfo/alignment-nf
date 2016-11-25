@@ -44,43 +44,80 @@ fasta_ref_ann = file( params.fasta_ref+'.ann' )
 fasta_ref_amb = file( params.fasta_ref+'.amb' )
 fasta_ref_pac = file( params.fasta_ref+'.pac' )
 
-mode  = 'fastq'
-files = Channel.fromPath( params.input_folder+'/*.fastq' )
-              .ifEmpty { mode='bam'}
+mode = 'fastq'
+if (file(params.input_folder).listFiles().findAll { it.name ==~ /.*fastq.gz/ }.size() > 0){
+    println "fastq files found, proceed with alignment"; files = Channel.fromPath( params.input_folder+'/*.fastq.gz' )
+}else{
+    if (file(params.input_folder).listFiles().findAll { it.name ==~ /.*bam/ }.size() > 0){
+        println "BAM files found, proceed with realignment"; mode ='bam'; files = Channel.fromPath( params.input_folder+'/*.bam' )
+    }else{
+        println "ERROR: input folder contains no fastq nor BAM files"; System.exit(0)
+    }
+}
+
 if(mode=='bam'){
         files = Channel.fromPath( params.input_folder+'/*.bam' )
                        .ifEmpty { error "Cannot find any fastq or bam file in: ${params.input_folder}" }
-        }
-              
-process bam_realignment {
 
-    cpus params.cpu
-    memory params.mem+'GB'    
+        process bam_realignment {
+
+            cpus params.cpu
+            memory params.mem+'GB'    
   
-    tag { bam_tag }
+            tag { bam_tag }
 
-    publishDir params.out_folder, mode: 'move'
+            publishDir params.out_folder, mode: 'move'
 
-    input:
-    file bam from files
-    file fasta_ref
-    file fasta_ref_fai
-    file fasta_ref_sa
-    file fasta_ref_bwt
-    file fasta_ref_ann
-    file fasta_ref_amb
-    file fasta_ref_pac
+            input:
+            file bam from files
+            file fasta_ref
+            file fasta_ref_fai
+            file fasta_ref_sa
+            file fasta_ref_bwt
+            file fasta_ref_ann
+            file fasta_ref_amb
+            file fasta_ref_pac
+            
+            output:
+            //file('*realigned.bam*') into outputs
 
-    output:
-    //file('*realigned.bam*') into outputs
+            shell:
+            bam_tag = bam.baseName
+            '''
+            echo 'set -o pipefail
+            samtools collate -uOn 128 !{bam_tag}.bam tmp_!{bam_tag} | samtools fastq - | bwa mem -M -t!{task.cpus} -R "@RG\\tID:!{bam_tag}\\tSM:!{bam_tag}\\t!{params.RG}" -p !{fasta_ref} - | samblaster --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort -t !{task.cpus} -m !{params.mem}G --tmpdir=!{bam_tag}_tmp -o !{bam_tag}_realigned.bam /dev/stdin'
+            '''
+        }
 
-    shell:
-    bam_tag = bam.baseName
-    echo '''
-    set -o pipefail
-    samtools collate -uOn 128 !{bam_tag}.bam tmp_!{bam_tag} | samtools fastq - | bwa mem -M -t!{task.cpus} -R "@RG\\tID:!{bam_tag}\\tSM:!{bam_tag}\\t!{params.RG}" -p !{fasta_ref} - | samblaster --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort -t !{task.cpus} -m !{params.mem}G --tmpdir=!{bam_tag}_tmp -o !{bam_tag}_realigned.bam /dev/stdin
-    '''
+}else if(mode=='fastq'){
+        process fastq_alignment {
+
+            cpus params.cpu
+            memory params.mem+'GB'    
+  
+            tag { fastq_tag }
+
+            publishDir params.out_folder, mode: 'move'
+
+            input:
+            file fastq from files
+            file fasta_ref
+            file fasta_ref_fai
+            file fasta_ref_sa
+            file fasta_ref_bwt
+            file fasta_ref_ann
+            file fasta_ref_amb
+            file fasta_ref_pac
+            
+            output:
+            //file('*aligned.bam*') into outputs
+
+            shell:
+            fastq_tag = fastq.baseName
+            '''
+            echo 'set -o pipefail
+            bwa mem -M -t!{task.cpus} -R "@RG\\tID:!{fastq_tag}\\tSM:!{fastq_tag}\\t!{params.RG}" -p !{fasta_ref} - | samblaster --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort -t !{task.cpus} -m !{params.mem}G --tmpdir=!{fastq_tag}_tmp -o !{fastq_tag}_aligned.bam /dev/stdin'
+            '''
+        }
+
 }
-
-
-
