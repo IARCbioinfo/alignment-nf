@@ -33,10 +33,10 @@ params.ref          = 'hg19.fasta'
 params.cpu          = 8
 params.mem          = 32
 params.RG           = ""
-params.out_folder="results_realignment"
+params.out_folder   = "results_alignment"
 
 //read files
-fasta_ref     = file(params.fasta_ref)
+fasta_ref     = file( params.fasta_ref )
 fasta_ref_fai = file( params.fasta_ref+'.fai' )
 fasta_ref_sa  = file( params.fasta_ref+'.sa' )
 fasta_ref_bwt = file( params.fasta_ref+'.bwt' )
@@ -44,7 +44,7 @@ fasta_ref_ann = file( params.fasta_ref+'.ann' )
 fasta_ref_amb = file( params.fasta_ref+'.amb' )
 fasta_ref_pac = file( params.fasta_ref+'.pac' )
 
-mode = 'fastq'
+mode  = 'fastq'
 files = Channel.fromPath( params.input_folder+'/*.fastq' )
               .ifEmpty { mode='bam'}
 if(mode=='bam'){
@@ -76,12 +76,10 @@ process bam_realignment {
 
     shell:
     bam_tag = bam.baseName
-    Channel.print{
-    '''
+    echo '''
     set -o pipefail
     samtools collate -uOn 128 !{bam_tag}.bam tmp_!{bam_tag} | samtools fastq - | bwa mem -M -t!{task.cpus} -R "@RG\\tID:!{bam_tag}\\tSM:!{bam_tag}\\t!{params.RG}" -p !{fasta_ref} - | samblaster --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort -t !{task.cpus} -m !{params.mem}G --tmpdir=!{bam_tag}_tmp -o !{bam_tag}_realigned.bam /dev/stdin
     '''
-        }
 }
 
 
