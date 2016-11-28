@@ -4,18 +4,33 @@
 vim: syntax=groovy
 -*- mode: groovy;-*- */
 
+// requirement:
+// - samtools
+// - samblaster
+// - sambamba
+
+//default values
+params.help         = null
+params.input_folder = '.'
+params.fasta_ref          = 'hg19.fasta'
+params.cpu          = 8
+params.mem          = 32
+params.RG           = ""
+params.out_folder   = "results_alignment"
+
+
 if (params.help) {
     log.info ''
-    log.info '--------------------------------------------------'
-    log.info 'NEXTFLOW ALIGNMENT OR REALIGNMENT PIPELINE'
-    log.info '--------------------------------------------------'
+    log.info '-------------------------------------------------------------'
+    log.info 'NEXTFLOW WHOLE EXOME/GENOME ALIGNMENT OR REALIGNMENT PIPELINE'
+    log.info '-------------------------------------------------------------'
     log.info ''
     log.info 'Usage: '
     log.info 'nextflow run bam_realignment.nf --input_folder BAM/ --cpu 8 --mem 32 --fasta_ref hg19.fasta'
     log.info ''
     log.info 'Mandatory arguments:'
     log.info '    --input_folder   FOLDER                  Folder containing BAM or fastq files to be called.'
-    log.info '    --ref          FILE                    Reference fasta file (with index).'
+    log.info '    --fasta_ref          FILE                    Reference fasta file (with index).'
     log.info 'Optional arguments:'
     log.info '    --cpu          INTEGER                 Number of cpu used by bwa mem and sambamba (default: 8).'
     log.info '    --mem          INTEGER                 Size of memory used by sambamba (in GB) (default: 32).'
@@ -26,14 +41,6 @@ if (params.help) {
     log.info ''
     exit 1
 }
-
-//default values
-params.input_folder = '.'
-params.ref          = 'hg19.fasta'
-params.cpu          = 8
-params.mem          = 32
-params.RG           = ""
-params.out_folder   = "results_alignment"
 
 //read files
 fasta_ref     = file( params.fasta_ref )
