@@ -1,3 +1,3 @@
 # alignment-nf
 
-![workflow](WESpipeline.pdf?raw=true "Workflow")
+![workflow](WESpipeline.png?raw=true "Scheme of alignment/realignment Workflow")
