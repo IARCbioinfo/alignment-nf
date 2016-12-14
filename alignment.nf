@@ -30,6 +30,8 @@ params.Mills_indels = ""
 params.kg_indels    = ""
 params.intervals    = "NA"
 params.GATK_folder  = "."
+params.indel_realignment = false 
+
 
 if (params.help) {
     log.info ''
@@ -44,6 +46,7 @@ if (params.help) {
     log.info '    --input_folder   FOLDER                  Folder containing BAM or fastq files to be aligned.'
     log.info '    --fasta_ref          FILE                    Reference fasta file (with index).'
     log.info 'Optional arguments:'
+    log.info '    --indel_realignment                    Performs local indel realignment (default: no).'
     log.info '    --cpu          INTEGER                 Number of cpu used by bwa mem and sambamba (default: 8).'
     log.info '    --mem          INTEGER                 Size of memory used by sambamba (in GB) (default: 32).'
     log.info '    --RG           STRING                  Samtools read group specification with "\t" between fields.'
@@ -161,46 +164,59 @@ if(mode=='fastq'){
     }
 }
 
-// Local realignment around indels - create target list to be realigned
-process creation_indel_realign_target {
-    cpus params.cpu
-    memory params.mem+'G'
-    perJobMemLimit = true
-    tag { file_tag }
-    input:
-    set val(file_tag), file("${file_tag}_new.bam*") from bam_files
-    output:
-    set val(file_tag), file("${file_tag}_target_intervals.list") into indel_realign_target_files
-    shell:
-    '''
-    java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T RealignerTargetCreator -nt !{params.cpu} -R !{params.genome_ref} -I !{file_tag}_new.bam -known !{params.Mills_indels} -known !{params.kg_indels} -o !{file_tag}_target_intervals.list
-    '''
-}
+if(params.indel_realignment== false){
+        // Local realignment around indels - create target list to be realigned
+        process creation_indel_realign_target {
+            cpus params.cpu
+            memory params.mem+'G'
+            perJobMemLimit = true
+            tag { file_tag }
+            input:
+            set val(file_tag), file("${file_tag}_new.bam*") from bam_files
+            output:
+            set val(file_tag), file("${file_tag}_target_intervals.list") into indel_realign_target_files
+            shell:
+            '''
+            java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T RealignerTargetCreator -nct !{params.cpu} -R !{params.genome_ref} -I !{file_tag}_new.bam -known !{params.Mills_indels} -known !{params.kg_indels} -o !{file_tag}_target_intervals.list
+            '''
+        }
 
-// Local realignment around indels - perform realignment
-process creation_indel_realign_bam {
-    cpus params.cpu
-    memory params.mem+'G'
-    perJobMemLimit = true
-    tag { file_tag }
+        // Local realignment around indels - perform realignment
+        process creation_indel_realign_bam {
+            cpus params.cpu
+            memory params.mem+'G'
+            perJobMemLimit = true
+            tag { file_tag }
+            
+            input:
+            set val(file_tag), file("${file_tag}_new.bam"), file("${file_tag}_new.bai") from bam_files2
+            set val(file_tag), file("${file_tag}_target_intervals.list") from indel_realign_target_files
+            output:
+            set val(file_tag), file("${file_tag}_new.bam*") into bam_files3, bam_files4, bam_files5
+            shell:
+            '''
+            java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T IndelRealigner -R !{params.genome_ref} -I !{file_tag}_new.bam -targetIntervals !{file_tag}_target_intervals.list -known !{params.Mills_indels} -known !{params.kg_indels} -o !{file_tag}_new2.bam			
+            rm !{file_tag}_new.bam
+            mv !{file_tag}_new2.bam !{file_tag}_new.bam
+            '''
+        }
+}else{
+    process no_indel_realign {
+        cpus '1'
+        memory '100M'
+        perJobMemLimit = true
+        tag { file_tag }
         
-    input:
-    set val(file_tag), file("${file_tag}_new.bam"), file("${file_tag}_new.bai") from bam_files2
-    set val(file_tag), file("${file_tag}_target_intervals.list") from indel_realign_target_files
-    output:
-    set val(file_tag), file("${file_tag}_new.bam*") into bam_files3, bam_files4, bam_files5
-    shell:
-    '''
-    java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T IndelRealigner -R !{params.genome_ref} -I !{file_tag}_new.bam -targetIntervals !{file_tag}_target_intervals.list -known !{params.Mills_indels} -known !{params.kg_indels} -o !{file_tag}_new2.bam			
-    rm !{file_tag}_new.bam
-    mv !{file_tag}_new2.bam !{file_tag}_new.bam
-    '''
+        input:
+        set val(file_tag), file("${file_tag}_new.bam*") from bam_files2
+        output:
+        set val(file_tag), file("${file_tag}_new.bam*") into bam_files3, bam_files4, bam_files5
+        """
+        """
+    }
 }
 
 
-// check continuity between processes
-
-// base quality score recalibration -> en option
 process creation_recal_table {
     cpus params.cpu
     memory params.mem+'G'
@@ -231,7 +247,7 @@ process creation_recal_table_post {
     set val(file_tag), file("${file_tag}_post_recal.table") into recal_table_post_files
     shell:
     '''
-    java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T BaseRecalibrator -nct 6 -R !{params.fasta_ref} -I !{file_tag}_new.bam -knownSites !{params.dbsnp} -knownSites !{params.Mills_indels} -knownSites !{params.kg_indels} -BQSR !{file_tag}_recal.table -L !{params.intervals} -o !{file_tag}_post_recal.table		
+    java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T BaseRecalibrator -nct !{params.cpu} -R !{params.fasta_ref} -I !{file_tag}_new.bam -knownSites !{params.dbsnp} -knownSites !{params.Mills_indels} -knownSites !{params.kg_indels} -BQSR !{file_tag}_recal.table -L !{params.intervals} -o !{file_tag}_post_recal.table		
     '''
 }
 
@@ -268,7 +284,7 @@ process creation_recal_bam {
     set val(file_tag), file("${file_tag}_recal.bam") into recal_bam_files
     shell:
     '''
-    java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T PrintReads -nct 6 -R !{params.fasta_ref} -I !{file_tag}_realigned.bam -BQSR !{file_tag}_recal.table -L !{params.intervals} -o !{file_tag}_recal.bam		
+    java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T PrintReads -nct !{params.cpu} -R !{params.fasta_ref} -I !{file_tag}_realigned.bam -BQSR !{file_tag}_recal.table -L !{params.intervals} -o !{file_tag}_recal.bam		
     rm !{file_tag}_new.bam
     '''
 }
