@@ -28,7 +28,8 @@ params.kg_snp       = ""
 params.Mills_snp    = ""
 params.Mills_indels = ""
 params.kg_indels    = ""
-params.bed          = ""
+params.intervals    = "NA"
+params.GATK_folder  = "."
 
 if (params.help) {
     log.info ''
@@ -83,8 +84,7 @@ if(mode=='bam'){
         memory params.mem+'G'
         perJobMemLimit = true
         tag { file_tag }
-        publishDir params.out_folder, mode: 'move'
-
+        
         input:
         file infile from files
         file fasta_ref
@@ -96,7 +96,7 @@ if(mode=='bam'){
         file fasta_ref_pac
             
         output:
-        set val(file_tag), file("*_new.bam*") into bam_files, bam_files2, bam_files3
+        set val(file_tag), file("*_new.bam*") into bam_files, bam_files2
 
         shell:
         file_tag = infile.baseName
@@ -138,8 +138,7 @@ if(mode=='fastq'){
         cpus params.cpu
         memory params.mem+'GB'    
         tag { file_tag }
-        publishDir params.out_folder, mode: 'move'
-
+        
         input:
         file pair from readPairs
         file fasta_ref
@@ -151,7 +150,7 @@ if(mode=='fastq'){
         file fasta_ref_pac
             
         output:
-        set val(file_tag), file('${file_tag}_new.bam*') into bam_files, bam_files2, bam_files3
+        set val(file_tag), file('${file_tag}_new.bam*') into bam_files, bam_files2
 
         shell:
         file_tag = pair[0].name.replace("${params.suffix1}.${params.fastq_ext}","")
@@ -162,6 +161,43 @@ if(mode=='fastq'){
     }
 }
 
+// Local realignment around indels - create target list to be realigned
+process creation_indel_realign_target {
+    cpus params.cpu
+    memory params.mem+'G'
+    perJobMemLimit = true
+    tag { file_tag }
+    input:
+    set val(file_tag), file("${file_tag}_new.bam*") from bam_files
+    output:
+    set val(file_tag), file("${file_tag}_target_intervals.list") into indel_realign_target_files
+    shell:
+    '''
+    java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T RealignerTargetCreator -nt !{params.cpu} -R !{params.genome_ref} -I !{file_tag}_new.bam -known !{params.Mills_indels} -known !{params.kg_indels} -o !{file_tag}_target_intervals.list
+    '''
+}
+
+// Local realignment around indels - perform realignment
+process creation_indel_realign_bam {
+    cpus params.cpu
+    memory params.mem+'G'
+    perJobMemLimit = true
+    tag { file_tag }
+        
+    input:
+    set val(file_tag), file("${file_tag}_new.bam"), file("${file_tag}_new.bai") from bam_files2
+    set val(file_tag), file("${file_tag}_target_intervals.list") from indel_realign_target_files
+    output:
+    set val(file_tag), file("${file_tag}_new.bam*") into bam_files3, bam_files4, bam_files5
+    shell:
+    '''
+    java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T IndelRealigner -R !{params.genome_ref} -I !{file_tag}_new.bam -targetIntervals !{file_tag}_target_intervals.list -known !{params.Mills_indels} -known !{params.kg_indels} -o !{file_tag}_new2.bam			
+    rm !{file_tag}_new.bam
+    mv !{file_tag}_new2.bam !{file_tag}_new.bam
+    '''
+}
+
+
 // check continuity between processes
 
 // base quality score recalibration -> en option
@@ -170,15 +206,14 @@ process creation_recal_table {
     memory params.mem+'G'
     perJobMemLimit = true
     tag { file_tag }
-    publishDir params.out_folder, mode: 'move'
-    
+        
     input:
-    set val(file_tag), file("${file_tag}_new.bam"), file("${file_tag}_new.bai") from bam_files
+    set val(file_tag), file("${file_tag}_new.bam"), file("${file_tag}_new.bai") from bam_files3
     output:
     set val(file_tag), file("${file_tag}_recal.table") into recal_table_files, recal_table_files2, recal_table_files3
     shell:
     '''
-    java -jar GenomeAnalysisTK.jar -T BaseRecalibrator -nct 6 -R !{params.fasta_ref} -I !{file_tag}_new.bam -knownSites !{params.dbsnp} -knownSites !{params.Mills_indels} -knownSites !{params.kg_indels} -L !{params.bed} -o !{file_tag}_recal.table
+    java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T BaseRecalibrator -nct !{params.cpu} -R !{params.fasta_ref} -I !{file_tag}_new.bam -knownSites !{params.dbsnp} -knownSites !{params.Mills_indels} -knownSites !{params.kg_indels} -L !{params.intervals} -o !{file_tag}_recal.table
     '''
 }
 
@@ -188,16 +223,15 @@ process creation_recal_table_post {
     memory params.mem+'G'
     perJobMemLimit = true
     tag { file_tag }
-    publishDir params.out_folder, mode: 'move'
-    
+        
     input:
-    set val(file_tag), file("${file_tag}_new.bam"), file("${file_tag}_new.bai") from bam_files2
+    set val(file_tag), file("${file_tag}_new.bam"), file("${file_tag}_new.bai") from bam_files4
     set val(file_tag), file("${file_tag}_recal.table") from recal_table_files
     output:
     set val(file_tag), file("${file_tag}_post_recal.table") into recal_table_post_files
     shell:
     '''
-    java -jar GenomeAnalysisTK.jar -T BaseRecalibrator -nct 6 -R !{params.fasta_ref} -I !{file_tag}_new.bam -knownSites !{params.dbsnp} -knownSites !{params.Mills_indels} -knownSites !{params.kg_indels} -BQSR !{file_tag}_recal.table -L !{params.bed} -o !{file_tag}_post_recal.table		
+    java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T BaseRecalibrator -nct 6 -R !{params.fasta_ref} -I !{file_tag}_new.bam -knownSites !{params.dbsnp} -knownSites !{params.Mills_indels} -knownSites !{params.kg_indels} -BQSR !{file_tag}_recal.table -L !{params.intervals} -o !{file_tag}_post_recal.table		
     '''
 }
 
@@ -207,8 +241,7 @@ process creation_recal_plots {
     memory params.mem+'G'
     perJobMemLimit = true
     tag { file_tag }
-    publishDir params.out_folder, mode: 'move'
-    
+        
     input:
     set val(file_tag), file("${file_tag}_recal.table") from recal_table_files2
     set val(file_tag), file("${file_tag}_post_recal.table") from recal_table_post_files
@@ -216,7 +249,7 @@ process creation_recal_plots {
     set val(file_tag), file("${file_tag}_recalibration_plots.pdf") into recal_plots_files
     shell:
     '''
-    java -jar GenomeAnalysisTK.jar -T AnalyzeCovariates -R !{params.fasta_ref} -before !{file_tag}_recal.table -after !{file_tag}_post_recal.table -plots !{file_tag}_recalibration_plots.pdf			
+    java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T AnalyzeCovariates -R !{params.fasta_ref} -before !{file_tag}_recal.table -after !{file_tag}_post_recal.table -plots !{file_tag}_recalibration_plots.pdf			
     '''
 }
 
@@ -229,13 +262,13 @@ process creation_recal_bam {
     publishDir params.out_folder, mode: 'move'
     
     input:
-    set val(file_tag), file("${file_tag}_new.bam"), file("${file_tag}_realigned.bai") from bam_files3
+    set val(file_tag), file("${file_tag}_new.bam"), file("${file_tag}_realigned.bai") from bam_files5
     set val(file_tag), file("${file_tag}_recal.table") from recal_table_files3
     output:
     set val(file_tag), file("${file_tag}_recal.bam") into recal_bam_files
     shell:
     '''
-    java -jar GenomeAnalysisTK.jar -T PrintReads -nct 6 -R !{params.fasta_ref} -I !{file_tag}_realigned.bam -BQSR !{file_tag}_recal.table -L !{params.bed} -o !{file_tag}_recal.bam		
+    java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T PrintReads -nct 6 -R !{params.fasta_ref} -I !{file_tag}_realigned.bam -BQSR !{file_tag}_recal.table -L !{params.intervals} -o !{file_tag}_recal.bam		
     rm !{file_tag}_new.bam
     '''
 }
