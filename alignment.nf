@@ -85,7 +85,6 @@ if(mode=='bam'){
 
         cpus params.cpu
         memory params.mem+'G'
-        perJobMemLimit = true
         tag { file_tag }
         
         input:
@@ -169,7 +168,6 @@ if(params.indel_realignment== false){
         process creation_indel_realign_target {
             cpus params.cpu
             memory params.mem+'G'
-            perJobMemLimit = true
             tag { file_tag }
             input:
             set val(file_tag), file("${file_tag}_tmp.bam*") from bam_files
@@ -188,7 +186,6 @@ if(params.indel_realignment== false){
     process no_indel_realign {
         cpus '1'
         memory '100M'
-        perJobMemLimit = true
         tag { file_tag }
         
         input:
@@ -204,7 +201,6 @@ if(params.indel_realignment== false){
 process base_quality_score_recalibration {
     cpus params.cpu
     memory params.mem+'G'
-    perJobMemLimit = true
     tag { file_tag }
         
     input:
