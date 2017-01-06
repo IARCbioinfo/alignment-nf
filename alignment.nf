@@ -16,7 +16,7 @@ params.fasta_ref    = 'hg19.fasta'
 params.cpu          = 8
 params.mem          = 32
 params.mem_sambamba = 1
-params.RG           = ""
+params.RG           = "PL:ILLUMINA"
 params.fastq_ext    = "fastq.gz"
 params.suffix1      = "_1"
 params.suffix2      = "_2"
@@ -28,7 +28,7 @@ params.kg_snp       = ""
 params.Mills_snp    = ""
 params.Mills_indels = ""
 params.kg_indels    = ""
-params.intervals    = "NA"
+params.intervals    = ""
 params.GATK_folder  = "."
 params.indel_realignment = false 
 
@@ -98,7 +98,8 @@ if(mode=='bam'){
         file fasta_ref_pac
             
         output:
-        set val(file_tag), file("*_tmp.bam*") into bam_files, bam_files2
+	set val(file_tag), file("*_tmp.bam") into bam_files, bam_files2
+	set val(file_tag), file("*_tmp.bam.bai") into bai_files, bai_files2
 
         shell:
         file_tag = infile.baseName
@@ -152,7 +153,8 @@ if(mode=='fastq'){
         file fasta_ref_pac
             
         output:
-        set val(file_tag), file('${file_tag}_tmp.bam*') into bam_files, bam_files2
+        set val(file_tag), file('${file_tag}_tmp.bam') into bam_files, bam_files2
+	set val(file_tag), file('${file_tag}_tmp.bam.bai') into bai_files, bai_files2
 
         shell:
         file_tag = pair[0].name.replace("${params.suffix1}.${params.fastq_ext}","")
@@ -170,16 +172,20 @@ if(params.indel_realignment== false){
             memory params.mem+'G'
             tag { file_tag }
             input:
-            set val(file_tag), file("${file_tag}_tmp.bam*") from bam_files
+	    set val(file_tag), file("${file_tag}_tmp.bam") from bam_files
+	    set val(file_tag), file("${file_tag}_tmp.bam.bai") from bai_files
             output:
             set val(file_tag), file("${file_tag}_target_intervals.list") into indel_realign_target_files
-            set val(file_tag), file("${file_tag}_tmp.bam*") into bam_files3
+            set val(file_tag), file("${file_tag}_tmp.bam") into bam_files3
+	    set val(file_tag), file("${file_tag}_tmp.bam.bai") into bai_files3
             shell:
             '''
-            java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T RealignerTargetCreator -nct !{params.cpu} -R !{params.fasta_ref} -I !{file_tag}_tmp.bam -known !{params.Mills_indels} -known !{params.kg_indels} -o !{file_tag}_target_intervals.list
+            java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T RealignerTargetCreator -nt !{params.cpu} -R !{params.fasta_ref} -I !{file_tag}_tmp.bam -known !{params.Mills_indels} -known !{params.kg_indels} -o !{file_tag}_target_intervals.list
             java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T IndelRealigner -R !{params.fasta_ref} -I !{file_tag}_tmp.bam -targetIntervals !{file_tag}_target_intervals.list -known !{params.Mills_indels} -known !{params.kg_indels} -o !{file_tag}_tmp2.bam			
             rm !{file_tag}_tmp.bam
+	    rm !{file_tag}_tmp.bam.bai
             mv !{file_tag}_tmp2.bam !{file_tag}_tmp.bam
+	    mv !{file_tag}_tmp2.bai !{file_tag}_tmp.bam.bai
             '''
         }
 }else{
@@ -189,9 +195,9 @@ if(params.indel_realignment== false){
         tag { file_tag }
         
         input:
-        set val(file_tag), file("${file_tag}_tmp.bam*") from bam_files2
+        set val(file_tag), file("${file_tag}_tmp.bam") from bam_files2
         output:
-        set val(file_tag), file("${file_tag}_tmp.bam*") into bam_files3
+        set val(file_tag), file("${file_tag}_tmp.bam") into bam_files3
         """
         """
     }
@@ -204,7 +210,8 @@ process base_quality_score_recalibration {
     tag { file_tag }
         
     input:
-    set val(file_tag), file("${file_tag}_tmp.bam"), file("${file_tag}_tmp.bai") from bam_files3
+    set val(file_tag), file("${file_tag}_tmp.bam") from bam_files3
+    set val(file_tag), file("${file_tag}_tmp.bam.bai") from bai_files3
     output:
     set val(file_tag), file("${file_tag}_recal.table") into recal_table_files
     set val(file_tag), file("${file_tag}_post_recal.table") into recal_table_post_files
@@ -216,7 +223,7 @@ process base_quality_score_recalibration {
     java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T BaseRecalibrator -nct !{params.cpu} -R !{params.fasta_ref} -I !{file_tag}_tmp.bam -knownSites !{params.dbsnp} -knownSites !{params.Mills_indels} -knownSites !{params.kg_indels} -L !{params.intervals} -o !{file_tag}_recal.table
     java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T BaseRecalibrator -nct !{params.cpu} -R !{params.fasta_ref} -I !{file_tag}_tmp.bam -knownSites !{params.dbsnp} -knownSites !{params.Mills_indels} -knownSites !{params.kg_indels} -BQSR !{file_tag}_recal.table -L !{params.intervals} -o !{file_tag}_post_recal.table		
     java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T AnalyzeCovariates -R !{params.fasta_ref} -before !{file_tag}_recal.table -after !{file_tag}_post_recal.table -plots !{file_tag}_recalibration_plots.pdf			
-    java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T PrintReads -nct !{params.cpu} -R !{params.fasta_ref} -I !{file_tag}_realigned.bam -BQSR !{file_tag}_recal.table -L !{params.intervals} -o !{file_tag}_recal.bam		
+    java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T PrintReads -nct !{params.cpu} -R !{params.fasta_ref} -I !{file_tag}_tmp.bam -BQSR !{file_tag}_recal.table -L !{params.intervals} -o !{file_tag}_recal.bam		
     rm !{file_tag}_tmp.bam
     '''
 }
