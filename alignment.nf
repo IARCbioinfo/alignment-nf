@@ -30,7 +30,8 @@ params.Mills_indels = ""
 params.kg_indels    = ""
 params.intervals    = ""
 params.GATK_folder  = "."
-params.indel_realignment = false 
+params.indel_realignment = "false"
+params.recalibration = "false"
 
 
 if (params.help) {
@@ -165,9 +166,9 @@ if(mode=='fastq'){
     }
 }
 
-if(params.indel_realignment== false){
+if(params.indel_realignment != "false"){
         // Local realignment around indels
-        process creation_indel_realign_target {
+        process indel_realignment {
             cpus params.cpu
             memory params.mem+'G'
             tag { file_tag }
@@ -177,32 +178,36 @@ if(params.indel_realignment== false){
             output:
             set val(file_tag), file("${file_tag}_target_intervals.list") into indel_realign_target_files
             set val(file_tag), file("${file_tag}_tmp.bam") into bam_files3
-	    set val(file_tag), file("${file_tag}_tmp.bam.bai") into bai_files3
+	    set val(file_tag), file("${file_tag}_tmp.bai") into bai_files3
             shell:
             '''
             java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T RealignerTargetCreator -nt !{params.cpu} -R !{params.fasta_ref} -I !{file_tag}_tmp.bam -known !{params.Mills_indels} -known !{params.kg_indels} -o !{file_tag}_target_intervals.list
             java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T IndelRealigner -R !{params.fasta_ref} -I !{file_tag}_tmp.bam -targetIntervals !{file_tag}_target_intervals.list -known !{params.Mills_indels} -known !{params.kg_indels} -o !{file_tag}_tmp2.bam			
             rm !{file_tag}_tmp.bam
-	    rm !{file_tag}_tmp.bam.bai
+	    rm !{file_tag}_tmp.bai
             mv !{file_tag}_tmp2.bam !{file_tag}_tmp.bam
-	    mv !{file_tag}_tmp2.bai !{file_tag}_tmp.bam.bai
+	    mv !{file_tag}_tmp2.bai !{file_tag}_tmp.bai
             '''
         }
 }else{
-    process no_indel_realign {
+    process no_indel_realignment {
         cpus '1'
         memory '100M'
         tag { file_tag }
         
         input:
         set val(file_tag), file("${file_tag}_tmp.bam") from bam_files2
+	set val(file_tag), file("${file_tag}_tmp.bam.bai") from bai_files
         output:
         set val(file_tag), file("${file_tag}_tmp.bam") into bam_files3
+	set val(file_tag), file("${file_tag}_tmp.bai") into bai_files3
         """
+	mv !{file_tag}_tmp.bam.bai !{file_tag}_tmp.bai
         """
     }
 }
 
+if(params.recalibration!= "false"){
 // base quality score recalibration
 process base_quality_score_recalibration {
     cpus params.cpu
@@ -211,12 +216,13 @@ process base_quality_score_recalibration {
         
     input:
     set val(file_tag), file("${file_tag}_tmp.bam") from bam_files3
-    set val(file_tag), file("${file_tag}_tmp.bam.bai") from bai_files3
+    set val(file_tag), file("${file_tag}_tmp.bai") from bai_files3
     output:
     set val(file_tag), file("${file_tag}_recal.table") into recal_table_files
     set val(file_tag), file("${file_tag}_post_recal.table") into recal_table_post_files
     set val(file_tag), file("${file_tag}_recalibration_plots.pdf") into recal_plots_files
     set val(file_tag), file("${file_tag}_recal.bam") into recal_bam_files
+    set val(file_tag), file("${file_tag}_recal.bai") into recal_bai_files
     publishDir params.out_folder, mode: 'move'
     shell:
     '''
@@ -226,4 +232,25 @@ process base_quality_score_recalibration {
     java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T PrintReads -nct !{params.cpu} -R !{params.fasta_ref} -I !{file_tag}_tmp.bam -BQSR !{file_tag}_recal.table -L !{params.intervals} -o !{file_tag}_recal.bam		
     rm !{file_tag}_tmp.bam
     '''
+}
+}else{
+  process no_recalibration {
+        cpus '1'
+        memory '100M'
+        tag { file_tag }
+        
+        input:
+        set val(file_tag), file("${file_tag}_tmp.bam") from bam_files3
+	set val(file_tag), file("${file_tag}_tmp.bai") from bai_files3
+        output:
+        set val(file_tag), file("${file_tag}_norecal.bam") into norecal_bam_files
+	set val(file_tag), file("${file_tag}_norecal.bai") into norecal_bai_files
+	publishDir params.out_folder, mode: 'move'
+	shell:
+        """
+	mv !{file_tag}_tmp.bam !{file_tag}_norecal.bam
+	mv !{file_tag}_tmp.bai !{file_tag}_norecal.bai
+        """
+    }
+
 }
