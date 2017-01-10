@@ -196,11 +196,12 @@ if(params.indel_realignment != "false"){
         tag { file_tag }
         
         input:
-        set val(file_tag), file("${file_tag}_tmp.bam") from bam_files2
+        set val(file_tag), file("${file_tag}_tmp.bam") from bam_files
 	set val(file_tag), file("${file_tag}_tmp.bam.bai") from bai_files
         output:
         set val(file_tag), file("${file_tag}_tmp.bam") into bam_files3
 	set val(file_tag), file("${file_tag}_tmp.bai") into bai_files3
+	shell:
         """
 	mv !{file_tag}_tmp.bam.bai !{file_tag}_tmp.bai
         """
