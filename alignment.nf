@@ -21,14 +21,11 @@ params.fastq_ext    = "fastq.gz"
 params.suffix1      = "_1"
 params.suffix2      = "_2"
 params.out_folder   = "results_alignment"
-params.dbsnp        = ""
-params.HapMap_snp   = ""
-params.omni_snp     = ""
-params.kg_snp       = ""
-params.Mills_snp    = ""
 params.Mills_indels = ""
 params.kg_indels    = ""
+params.dbsnp        = ""
 params.intervals    = ""
+params.GATK_bundle       = "bundle"
 params.GATK_folder  = "."
 params.indel_realignment = "false"
 params.recalibration = "false"
@@ -181,8 +178,10 @@ if(params.indel_realignment != "false"){
 	    set val(file_tag), file("${file_tag}_tmp.bai") into bai_files3
             shell:
             '''
-            java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T RealignerTargetCreator -nt !{params.cpu} -R !{params.fasta_ref} -I !{file_tag}_tmp.bam -known !{params.Mills_indels} -known !{params.kg_indels} -o !{file_tag}_target_intervals.list
-            java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T IndelRealigner -R !{params.fasta_ref} -I !{file_tag}_tmp.bam -targetIntervals !{file_tag}_target_intervals.list -known !{params.Mills_indels} -known !{params.kg_indels} -o !{file_tag}_tmp2.bam			
+	    indelsvcf=`ls !{params.GATK_bundle}/*indels*.vcf`
+	    for ll in $indelsvcf; do knowncom=$knowncom' -known '$ll; done
+            java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T RealignerTargetCreator -nt !{params.cpu} -R !{params.fasta_ref} -I !{file_tag}_tmp.bam $knowncom -o !{file_tag}_target_intervals.list
+            java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T IndelRealigner -R !{params.fasta_ref} -I !{file_tag}_tmp.bam -targetIntervals !{file_tag}_target_intervals.list $knowncom -o !{file_tag}_tmp2.bam
             rm !{file_tag}_tmp.bam
 	    rm !{file_tag}_tmp.bai
             mv !{file_tag}_tmp2.bam !{file_tag}_tmp.bam
@@ -227,10 +226,15 @@ process base_quality_score_recalibration {
     publishDir params.out_folder, mode: 'move'
     shell:
     '''
-    java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T BaseRecalibrator -nct !{params.cpu} -R !{params.fasta_ref} -I !{file_tag}_tmp.bam -knownSites !{params.dbsnp} -knownSites !{params.Mills_indels} -knownSites !{params.kg_indels} -L !{params.intervals} -o !{file_tag}_recal.table
-    java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T BaseRecalibrator -nct !{params.cpu} -R !{params.fasta_ref} -I !{file_tag}_tmp.bam -knownSites !{params.dbsnp} -knownSites !{params.Mills_indels} -knownSites !{params.kg_indels} -BQSR !{file_tag}_recal.table -L !{params.intervals} -o !{file_tag}_post_recal.table		
-    java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T AnalyzeCovariates -R !{params.fasta_ref} -before !{file_tag}_recal.table -after !{file_tag}_post_recal.table -plots !{file_tag}_recalibration_plots.pdf			
-    java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T PrintReads -nct !{params.cpu} -R !{params.fasta_ref} -I !{file_tag}_tmp.bam -BQSR !{file_tag}_recal.table -L !{params.intervals} -o !{file_tag}_recal.bam		
+    indelsvcf=`ls !{params.GATK_bundle}/*indels*.vcf`
+    dbsnpvcfs=(`ls !{params.GATK_bundle}/*dbsnp*.vcf`)
+    dbsnpvcf=${dbsnpvcfs[@]:(-1)}
+    for ll in $indelsvcf; do knownSitescom=$knownSitescom' -knownSites '$ll; done
+    knownSitescom=$knownSitescom' -knownSites '$dbsnpvcf
+    java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T BaseRecalibrator -nct !{params.cpu} -R !{params.fasta_ref} -I !{file_tag}_tmp.bam $knownSitescom -L !{params.intervals} -o !{file_tag}_recal.table
+    java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T BaseRecalibrator -nct !{params.cpu} -R !{params.fasta_ref} -I !{file_tag}_tmp.bam $knownSitescom -BQSR !{file_tag}_recal.table -L !{params.intervals} -o !{file_tag}_post_recal.table		
+    java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T AnalyzeCovariates -R !{params.fasta_ref} -before !{file_tag}_recal.table -after !{file_tag}_post_recal.table -plots !{file_tag}_recalibration_plots.pdf	
+    java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T PrintReads -nct !{params.cpu} -R !{params.fasta_ref} -I !{file_tag}_tmp.bam -BQSR !{file_tag}_recal.table -L !{params.intervals} -o !{file_tag}_recal.bam	
     rm !{file_tag}_tmp.bam
     '''
 }
@@ -248,10 +252,10 @@ process base_quality_score_recalibration {
 	set val(file_tag), file("${file_tag}_norecal.bai") into norecal_bai_files
 	publishDir params.out_folder, mode: 'move'
 	shell:
-        """
+        '''
 	mv !{file_tag}_tmp.bam !{file_tag}_norecal.bam
 	mv !{file_tag}_tmp.bai !{file_tag}_norecal.bai
-        """
+        '''
     }
 
 }
