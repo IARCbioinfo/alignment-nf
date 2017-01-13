@@ -80,7 +80,7 @@ if(mode=='bam'){
         
         input:
         file infile from files
-        file fasta_refs
+        file refs from fasta_refs
      
         output:
 	set val(file_tag), file("*_tmp.bam") into bam_files, bam_files2
