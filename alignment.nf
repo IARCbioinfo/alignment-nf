@@ -28,7 +28,7 @@ params.indel_realignment = "false"
 params.recalibration = "false"
 params.js           = "k8"
 params.postaltjs    = "bwa-postalt.js"
-
+params.alt          = "false"
 
 if (params.help) {
     log.info ''
