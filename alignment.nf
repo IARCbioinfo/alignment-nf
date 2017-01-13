@@ -91,7 +91,7 @@ if(mode=='bam'){
 	  postalt=''
 	}else{
 	  ignorealt=''
-	  postalt=!{params.js}+" "+!{params.postaltjs}+" "+!{params.fasta_ref}+".alt" |
+	  postalt=!{params.js}+" "+!{params.postaltjs}+" "+!{params.fasta_ref}+".alt |"
 	}
         shell:
         file_tag = infile.baseName
