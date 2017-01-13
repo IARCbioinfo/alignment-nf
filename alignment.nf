@@ -58,8 +58,9 @@ if (params.help) {
 }
 
 //read files
-fasta_refs = file( params.fasta_ref+'*' )
-
+fastaall=params.fasta_ref+'*'
+fasta_refs = file( fastaall )
+println fasta_refs
 mode = 'fastq'
 if (file(params.input_folder).listFiles().findAll { it.name ==~ /.*${params.fastq_ext}/ }.size() > 0){
     println "fastq files found, proceed with alignment"
