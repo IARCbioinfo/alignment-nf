@@ -58,9 +58,15 @@ if (params.help) {
 }
 
 //read files
-fastaall=params.fasta_ref+'*'
-fasta_refs = file( fastaall )
-println fasta_refs
+fasta_ref = file(params.fasta_ref)
+fasta_ref_fai = file( params.fasta_ref+'.fai' )
+fasta_ref_sa = file( params.fasta_ref+'.sa' )
+fasta_ref_bwt = file( params.fasta_ref+'.bwt' )
+fasta_ref_ann = file( params.fasta_ref+'.ann' )
+fasta_ref_amb = file( params.fasta_ref+'.amb' )
+fasta_ref_pac = file( params.fasta_ref+'.pac' )
+fasta_ref_alt = file( params.fasta_ref+'.alt' )
+
 mode = 'fastq'
 if (file(params.input_folder).listFiles().findAll { it.name ==~ /.*${params.fastq_ext}/ }.size() > 0){
     println "fastq files found, proceed with alignment"
@@ -80,7 +86,14 @@ if(mode=='bam'){
         
         input:
         file infile from files
-        file '*.fa*' from fasta_refs
+	file fasta_ref
+	file fasta_ref_fai
+	file fasta_ref_sa
+	file fasta_ref_bwt
+	file fasta_ref_ann
+	file fasta_ref_amb
+	file fasta_ref_pac
+	file fasta_ref_alt
      
         output:
 	set val(file_tag), file("*_tmp.bam") into bam_files, bam_files2
@@ -139,8 +152,15 @@ if(mode=='fastq'){
         
         input:
         file pair from readPairs
-        file fasta_refs
-            
+	file fasta_ref
+	file fasta_ref_fai
+	file fasta_ref_sa
+	file fasta_ref_bwt
+	file fasta_ref_ann
+	file fasta_ref_amb
+	file fasta_ref_pac
+	file fasta_ref_alt
+                 
         output:
         set val(file_tag), file('${file_tag}_tmp.bam') into bam_files, bam_files2
 	set val(file_tag), file('${file_tag}_tmp.bam.bai') into bai_files, bai_files2
