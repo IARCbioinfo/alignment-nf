@@ -87,12 +87,13 @@ if(mode=='bam'){
 
         script:
 	if(params.alt=="false"){
-	  ignorealt="-j"
+	  ignorealt='-j'
 	  postalt=''
 	}else{
 	  ignorealt=''
-	  postalt=!{params.js}+" "+!{params.postaltjs}+" "+!{params.fasta_ref}+".alt |"
+	  postalt=params.js+' '+params.postaltjs+' '+params.fasta_ref+'.alt |'
 	}
+	println ignorealt
 	println postalt
         shell:
         file_tag = infile.baseName
