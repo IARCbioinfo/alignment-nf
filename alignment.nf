@@ -185,8 +185,8 @@ if(params.indel_realignment != "false"){
 	    set val(file_tag), file("${file_tag}_tmp.bam.bai") from bai_files
             output:
             set val(file_tag), file("${file_tag}_target_intervals.list") into indel_realign_target_files
-            set val(file_tag), file("${file_tag}_tmp.bam") into bam_files3
-	    set val(file_tag), file("${file_tag}_tmp.bai") into bai_files3
+            set val(file_tag), file("${file_tag}_tmp.bam") into bam_files2
+	    set val(file_tag), file("${file_tag}_tmp.bai") into bai_files2
             shell:
             '''
 	    indelsvcf=`ls !{params.GATK_bundle}/*indels*.vcf`
@@ -209,8 +209,8 @@ if(params.indel_realignment != "false"){
         set val(file_tag), file("${file_tag}_tmp.bam") from bam_files
 	set val(file_tag), file("${file_tag}_tmp.bam.bai") from bai_files
         output:
-        set val(file_tag), file("${file_tag}_tmp.bam") into bam_files3
-	set val(file_tag), file("${file_tag}_tmp.bai") into bai_files3
+        set val(file_tag), file("${file_tag}_tmp.bam") into bam_files2
+	set val(file_tag), file("${file_tag}_tmp.bai") into bai_files2
 	shell:
         '''
 	mv !{file_tag}_tmp.bam.bai !{file_tag}_tmp.bai
@@ -226,8 +226,8 @@ process base_quality_score_recalibration {
     tag { file_tag }
         
     input:
-    set val(file_tag), file("${file_tag}_tmp.bam") from bam_files3
-    set val(file_tag), file("${file_tag}_tmp.bai") from bai_files3
+    set val(file_tag), file("${file_tag}_tmp.bam") from bam_files2
+    set val(file_tag), file("${file_tag}_tmp.bai") from bai_files2
     output:
     set val(file_tag), file("${file_tag}_recal.table") into recal_table_files
     set val(file_tag), file("${file_tag}_post_recal.table") into recal_table_post_files
@@ -261,8 +261,8 @@ process base_quality_score_recalibration {
         tag { file_tag }
         
         input:
-        set val(file_tag), file("${file_tag}_tmp.bam") from bam_files3
-	set val(file_tag), file("${file_tag}_tmp.bai") from bai_files3
+        set val(file_tag), file("${file_tag}_tmp.bam") from bam_files2
+	set val(file_tag), file("${file_tag}_tmp.bai") from bai_files2
         output:
         set val(file_tag), file("${file_tag}_norecal.bam") into norecal_bam_files
 	set val(file_tag), file("${file_tag}_norecal.bai") into norecal_bai_files
@@ -274,8 +274,8 @@ process base_quality_score_recalibration {
 	if(params.indel_realignment!="false") suffix=suffix+'_indelrealigned'
 	shell:
         '''
-	mv !{file_tag}_tmp.bam !{file_tag}!{suffix}.bam
-	mv !{file_tag}_tmp.bai !{file_tag}!{suffix}.bai
+	mv `readlink !{file_tag}_tmp.bam` !{file_tag}!{suffix}.bam
+	mv `readlink !{file_tag}_tmp.bai` !{file_tag}!{suffix}.bai
         '''
     }
 
