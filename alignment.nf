@@ -96,8 +96,8 @@ if(mode=='bam'){
 	file fasta_ref_alt
      
         output:
-	set val(file_tag), file("*_tmp.bam") into bam_files, bam_files2
-	set val(file_tag), file("*_tmp.bam.bai") into bai_files, bai_files2
+	set val(file_tag), file("*_tmp.bam") into bam_files
+	set val(file_tag), file("*_tmp.bam.bai") into bai_files
 
         script:
 	if(params.alt=="false"){
@@ -162,8 +162,8 @@ if(mode=='fastq'){
 	file fasta_ref_alt
                  
         output:
-        set val(file_tag), file('${file_tag}_tmp.bam') into bam_files, bam_files2
-	set val(file_tag), file('${file_tag}_tmp.bam.bai') into bai_files, bai_files2
+        set val(file_tag), file('${file_tag}_tmp.bam') into bam_files
+	set val(file_tag), file('${file_tag}_tmp.bam.bai') into bai_files
 
         shell:
         file_tag = pair[0].name.replace("${params.suffix1}.${params.fastq_ext}","")
@@ -173,9 +173,6 @@ if(mode=='fastq'){
         '''
     }
 }
-
-// for alt contigs: k8 bwa-postalt.js chr19_chr19_KI270866v1_alt.fasta.alt altalt.sam > altalt_postalt.sam
-
 
 if(params.indel_realignment != "false"){
         // Local realignment around indels
@@ -238,6 +235,11 @@ process base_quality_score_recalibration {
     set val(file_tag), file("${file_tag}_recal.bam") into recal_bam_files
     set val(file_tag), file("${file_tag}_recal.bai") into recal_bai_files
     publishDir params.out_folder, mode: 'move'
+
+    script:
+    suffix=''
+    if(params.alt!="false") suffix=suffix+'_alt'
+    if(params.indel_realignment!="false") suffix=suffix+'_indelrealigned'
     shell:
     '''
     indelsvcf=`ls !{params.GATK_bundle}/*indels*.vcf`
@@ -248,7 +250,7 @@ process base_quality_score_recalibration {
     java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T BaseRecalibrator -nct !{params.cpu} -R !{params.fasta_ref} -I !{file_tag}_tmp.bam $knownSitescom -L !{params.intervals} -o !{file_tag}_recal.table
     java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T BaseRecalibrator -nct !{params.cpu} -R !{params.fasta_ref} -I !{file_tag}_tmp.bam $knownSitescom -BQSR !{file_tag}_recal.table -L !{params.intervals} -o !{file_tag}_post_recal.table		
     java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T AnalyzeCovariates -R !{params.fasta_ref} -before !{file_tag}_recal.table -after !{file_tag}_post_recal.table -plots !{file_tag}_recalibration_plots.pdf	
-    java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T PrintReads -nct !{params.cpu} -R !{params.fasta_ref} -I !{file_tag}_tmp.bam -BQSR !{file_tag}_recal.table -L !{params.intervals} -o !{file_tag}_recal.bam	
+    java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T PrintReads -nct !{params.cpu} -R !{params.fasta_ref} -I !{file_tag}_tmp.bam -BQSR !{file_tag}_recal.table -L !{params.intervals} -o !{file_tag}!{suffix}_BQrecalibrated.bam	
     rm !{file_tag}_tmp.bam
     '''
 }
@@ -265,10 +267,15 @@ process base_quality_score_recalibration {
         set val(file_tag), file("${file_tag}_norecal.bam") into norecal_bam_files
 	set val(file_tag), file("${file_tag}_norecal.bai") into norecal_bai_files
 	publishDir params.out_folder, mode: 'move'
+
+	script:
+	suffix=''
+	if(params.alt!="false") suffix=suffix+'_alt'
+	if(params.indel_realignment!="false") suffix=suffix+'_indelrealigned'
 	shell:
         '''
-	mv !{file_tag}_tmp.bam !{file_tag}_norecal.bam
-	mv !{file_tag}_tmp.bai !{file_tag}_norecal.bai
+	mv !{file_tag}_tmp.bam !{file_tag}!{suffix}.bam
+	mv !{file_tag}_tmp.bai !{file_tag}!{suffix}.bai
         '''
     }
 
