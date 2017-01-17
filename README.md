@@ -32,7 +32,7 @@ For the base quality score recalibration:
 
 ## Usage
 ```bash
-nextflow run alignment.nf --input_folder input --fasta_ref hg19.fasta --out_folder output
+nextflow run alignment-nf --input_folder input --fasta_ref hg19.fasta --out_folder output
 ```
 ### Enable ALT mode
 To use the alternative contigs handling mode, you must provide the path to an ALT aware genome reference (e.g., hg38) AND add the *--alt* option, as well as satisfy the requirements above mentionned. For example:
