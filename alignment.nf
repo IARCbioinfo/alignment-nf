@@ -264,8 +264,8 @@ process base_quality_score_recalibration {
         set val(file_tag), file("${file_tag}_tmp.bam") from bam_files2
 	set val(file_tag), file("${file_tag}_tmp.bai") from bai_files2
         output:
-        set val(file_tag), file("${file_tag}_norecal.bam") into norecal_bam_files
-	set val(file_tag), file("${file_tag}_norecal.bai") into norecal_bai_files
+        set val(file_tag), file("${file_tag}${suffix}.bam") into norecal_bam_files
+	set val(file_tag), file("${file_tag}${suffix}.bai") into norecal_bai_files
 	publishDir params.out_folder, mode: 'move'
 
 	script:
