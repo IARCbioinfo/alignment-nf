@@ -20,7 +20,7 @@ params.RG           = "PL:ILLUMINA"
 params.fastq_ext    = "fastq.gz"
 params.suffix1      = "_1"
 params.suffix2      = "_2"
-params.out_folder   = "results_alignment"
+params.out_folder   = "."
 params.intervals    = ""
 params.GATK_bundle       = "bundle"
 params.GATK_folder  = "."
@@ -237,7 +237,7 @@ process base_quality_score_recalibration {
     publishDir params.out_folder, mode: 'move'
 
     script:
-    suffix=''
+    suffix='_new'
     if(params.alt!="false") suffix=suffix+'_alt'
     if(params.indel_realignment!="false") suffix=suffix+'_indelrealigned'
     shell:
@@ -269,7 +269,7 @@ process base_quality_score_recalibration {
 	publishDir params.out_folder, mode: 'move'
 
 	script:
-	suffix=''
+	suffix='_new'
 	if(params.alt!="false") suffix=suffix+'_alt'
 	if(params.indel_realignment!="false") suffix=suffix+'_indelrealigned'
 	shell:
