@@ -1,5 +1,7 @@
 # alignment-nf
 
+Nextflow pipeline to perform BAM realignment or fastq alignment, with/without local indel realignment and base quality score recalibration.
+
 ## Overview of pipeline workflow
 
 ![workflow](WESpipeline.png?raw=true "Scheme of alignment/realignment Workflow")
