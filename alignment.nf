@@ -190,6 +190,7 @@ if(params.indel_realignment != "false"){
             shell:
             '''
 	    indelsvcf=`ls !{params.GATK_bundle}/*indels*.vcf`
+	    knowncom=''
 	    for ll in $indelsvcf; do knowncom=$knowncom' -known '$ll; done
             java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T RealignerTargetCreator -nt !{params.cpu} -R !{params.fasta_ref} -I !{file_tag}_tmp.bam $knowncom -o !{file_tag}_target_intervals.list
             java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T IndelRealigner -R !{params.fasta_ref} -I !{file_tag}_tmp.bam -targetIntervals !{file_tag}_target_intervals.list $knowncom -o !{file_tag}_tmp2.bam
@@ -245,6 +246,7 @@ process base_quality_score_recalibration {
     indelsvcf=`ls !{params.GATK_bundle}/*indels*.vcf`
     dbsnpvcfs=(`ls !{params.GATK_bundle}/*dbsnp*.vcf`)
     dbsnpvcf=${dbsnpvcfs[@]:(-1)}
+    knownSitescom=''
     for ll in $indelsvcf; do knownSitescom=$knownSitescom' -knownSites '$ll; done
     knownSitescom=$knownSitescom' -knownSites '$dbsnpvcf
     java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T BaseRecalibrator -nct !{params.cpu} -R !{params.fasta_ref} -I !{file_tag}_tmp.bam $knownSitescom -L !{params.intervals} -o !{file_tag}_recal.table
