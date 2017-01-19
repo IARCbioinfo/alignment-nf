@@ -100,7 +100,7 @@ if(mode=='bam'){
 	set val(file_name), file('${file_name}.bai') into bai_files
 	if( (params.recalibration=="false")&(params.indel_realignment=="false") ) publishDir params.out_folder, mode: 'move'
 
-        script:
+        shell:
         if( (params.recalibration=="false")&(params.indel_realignment=="false") ){
     	    suffix='_new'
 	    if(params.alt!="false") suffix=suffix+'_alt'
@@ -116,7 +116,6 @@ if(mode=='bam'){
 	  postalt=params.js+' '+params.postaltjs+' '+params.fasta_ref+'.alt |'
 	}
         file_tag = infile.baseName
-	shell:
         '''
         set -o pipefail
         samtools collate -uOn 128 !{file_tag}.bam tmp_!{file_tag} | samtools fastq - | bwa mem !{ignorealt} -M -t!{task.cpus} -R "@RG\\tID:!{file_tag}\\tSM:!{file_tag}\\t!{params.RG}" -p !{params.fasta_ref} - | !{postalt} samblaster --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort -t !{task.cpus} -m !{params.mem_sambamba}G --tmpdir=!{file_tag}_tmp -o !{file_name}.bam /dev/stdin
@@ -172,7 +171,7 @@ if(mode=='fastq'){
 	set val(file_name), file('${file_name}.bai') into bai_files
 	if( (params.recalibration=="false")&(params.indel_realignment=="false") ) publishDir params.out_folder, mode: 'move'
 
-        script:
+        shell:
         file_tag = pair[0].name.replace("${params.suffix1}.${params.fastq_ext}","")
 	if( (params.recalibration=="false")&(params.indel_realignment=="false") ){
     	    suffix='_new'
@@ -188,7 +187,6 @@ if(mode=='fastq'){
 	  ignorealt=''
 	  postalt=params.js+' '+params.postaltjs+' '+params.fasta_ref+'.alt |'
 	}
-	shell:
         '''
         set -o pipefail
         bwa mem -M -t!{task.cpus} -R "@RG\\tID:!{file_tag}\\tSM:!{file_tag}\\t!{params.RG}" !{params.fasta_ref} !{pair[0]} !{pair[1]} | !{postalt} samblaster --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort -t !{task.cpus} -m !{params.mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag}!{suffix}.bam /dev/stdin
@@ -212,7 +210,7 @@ if(params.indel_realignment != "false"){
 	    set val(file_name), file('${file_name}.bai') into bai_files
 	    if(params.recalibration=="false") publishDir params.out_folder, mode: 'move'
 	    
-            script:
+            shell:
     	    if(params.recalibration=="false"){
 	        suffix='_new'
 		if(params.alt!="false") suffix=suffix+'_alt'
@@ -221,7 +219,6 @@ if(params.indel_realignment != "false"){
 		suffix='_tmp'
 	    }
 	    file_name='${file_tag}${suffix}'
-	    shell:
             '''
 	    indelsvcf=`ls !{params.GATK_bundle}/*indels*.vcf`
 	    knowncom=''
@@ -272,13 +269,12 @@ process base_quality_score_recalibration {
     set val(file_name), file("${file_name}.bai") into recal_bai_files
     publishDir params.out_folder, mode: 'move'
 
-    script:
+    shell:
     suffix='_new'
     if(params.alt!="false") suffix=suffix+'_alt'
     if(params.indel_realignment!="false") suffix=suffix+'_indelrealigned'
     suffix=suffix+'_BQSrecalibrated'
     file_name='${file_tag}${suffix}'
-    shell:
     '''
     indelsvcf=`ls !{params.GATK_bundle}/*indels*.vcf`
     dbsnpvcfs=(`ls !{params.GATK_bundle}/*dbsnp*.vcf`)
