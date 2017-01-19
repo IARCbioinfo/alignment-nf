@@ -254,6 +254,9 @@ if(params.indel_realignment != "false"){
         set val(file_tag)
 	file("${file_tag}_tmp.bam") into bam_files2
 	file("${file_tag}_tmp.bai") into bai_files2
+	script:
+	'''
+	'''
     }
     }
 }
