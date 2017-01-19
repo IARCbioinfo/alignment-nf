@@ -188,6 +188,7 @@ if(mode=='fastq'){
 	  ignorealt=''
 	  postalt=params.js+' '+params.postaltjs+' '+params.fasta_ref+'.alt |'
 	}
+	shell:
         '''
         set -o pipefail
         bwa mem -M -t!{task.cpus} -R "@RG\\tID:!{file_tag}\\tSM:!{file_tag}\\t!{params.RG}" !{params.fasta_ref} !{pair[0]} !{pair[1]} | !{postalt} samblaster --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort -t !{task.cpus} -m !{params.mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag}!{suffix}.bam /dev/stdin
@@ -220,6 +221,7 @@ if(params.indel_realignment != "false"){
 		suffix='_tmp'
 	    }
 	    file_name='${file_tag}${suffix}'
+	    shell:
             '''
 	    indelsvcf=`ls !{params.GATK_bundle}/*indels*.vcf`
 	    knowncom=''
@@ -245,7 +247,7 @@ if(params.indel_realignment != "false"){
         output:
         set val(file_tag), file("${file_tag}_tmp.bam") into bam_files2
 	set val(file_tag), file("${file_tag}_tmp.bai") into bai_files2
-	script:
+	shell:
 	'''
 	'''
     }
