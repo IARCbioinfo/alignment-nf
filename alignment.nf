@@ -119,6 +119,7 @@ if(mode=='bam'){
         '''
         set -o pipefail
         samtools collate -uOn 128 !{file_tag}.bam tmp_!{file_tag} | samtools fastq - | bwa mem !{ignorealt} -M -t!{task.cpus} -R "@RG\\tID:!{file_tag}\\tSM:!{file_tag}\\t!{params.RG}" -p !{params.fasta_ref} - | !{postalt} samblaster --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort -t !{task.cpus} -m !{params.mem_sambamba}G --tmpdir=!{file_tag}_tmp -o !{file_name}.bam /dev/stdin
+	mv !{file_name}.bam.bai !{file_name}.bai 
         '''
     }
 }
@@ -189,8 +190,8 @@ if(mode=='fastq'){
 	}
         '''
         set -o pipefail
-        bwa mem -M -t!{task.cpus} -R "@RG\\tID:!{file_tag}\\tSM:!{file_tag}\\t!{params.RG}" !{params.fasta_ref} !{pair[0]} !{pair[1]} | !{postalt} samblaster --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort -t !{task.cpus} -m !{params.mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag}!{suffix}.bam /dev/stdin
-	mv !{file_tag}!{suffix}.bam.bai !{file_tag}!{suffix}.bai 
+        bwa mem -M -t!{task.cpus} -R "@RG\\tID:!{file_tag}\\tSM:!{file_tag}\\t!{params.RG}" !{params.fasta_ref} !{pair[0]} !{pair[1]} | !{postalt} samblaster --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort -t !{task.cpus} -m !{params.mem}G --tmpdir=!{file_tag}_tmp -o !{file_name}.bam /dev/stdin
+	mv !{file_name}.bam.bai !{file_name}.bai 
         '''
      }
 }
@@ -253,7 +254,7 @@ if(params.indel_realignment != "false"){
 
 if(params.recalibration!= "false"){
 // base quality score recalibration
-process base_quality_score_recalibration {
+   process base_quality_score_recalibration {
     cpus params.cpu
     memory params.mem+'G'
     tag { file_tag }
@@ -289,5 +290,5 @@ process base_quality_score_recalibration {
     rm !{file_tag}_tmp.bam
     rm !{file_tag}_tmp.bai
     '''
-}
+    }
 }
