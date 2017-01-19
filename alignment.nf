@@ -101,8 +101,7 @@ if(mode=='bam'){
 	if( (params.recalibration=="false")&(params.indel_realignment=="false") ) publishDir params.out_folder, mode: 'move'
 
         script:
-        file_tag = pair[0].name.replace("${params.suffix1}.${params.fastq_ext}","")
-	if( (params.recalibration=="false")&(params.indel_realignment=="false") ){
+        if( (params.recalibration=="false")&(params.indel_realignment=="false") ){
     	    suffix='_new'
 	    if(params.alt!="false") suffix=suffix+'_alt'
  	}else{
@@ -116,9 +115,6 @@ if(mode=='bam'){
 	  ignorealt=''
 	  postalt=params.js+' '+params.postaltjs+' '+params.fasta_ref+'.alt |'
 	}
-	println ignorealt
-	println postalt
-        shell:
         file_tag = infile.baseName
         '''
         set -o pipefail
