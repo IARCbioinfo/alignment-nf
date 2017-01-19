@@ -179,7 +179,7 @@ if(mode=='fastq'){
  	}else{
 	    suffix='_tmp'
 	}
-	file_name='${file_tag}'+'${suffix}'
+	file_name=file_tag+suffix
 	if(params.alt=="false"){
 	  ignorealt='-j'
 	  postalt=''
@@ -218,7 +218,7 @@ if(params.indel_realignment != "false"){
 	    }else{
 		suffix='_tmp'
 	    }
-	    file_name='${file_tag}${suffix}'
+	    file_name=file_tag+suffix
             '''
 	    indelsvcf=`ls !{params.GATK_bundle}/*indels*.vcf`
 	    knowncom=''
@@ -274,7 +274,7 @@ process base_quality_score_recalibration {
     if(params.alt!="false") suffix=suffix+'_alt'
     if(params.indel_realignment!="false") suffix=suffix+'_indelrealigned'
     suffix=suffix+'_BQSrecalibrated'
-    file_name='${file_tag}${suffix}'
+    file_name=file_tag+suffix
     '''
     indelsvcf=`ls !{params.GATK_bundle}/*indels*.vcf`
     dbsnpvcfs=(`ls !{params.GATK_bundle}/*dbsnp*.vcf`)
