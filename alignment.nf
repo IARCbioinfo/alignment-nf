@@ -96,8 +96,10 @@ if(mode=='bam'){
 	file fasta_ref_alt
      
         output:
-	set val(file_tag), set val(suffix), file('${file_tag}${suffix}.bam') into bam_files
-	set val(file_tag), set val(suffix), file('${file_tag}${suffix}.bai') into bai_files
+	set val(file_tag)
+	set val(suffix)
+	file('${file_tag}${suffix}.bam') into bam_files
+	file('${file_tag}${suffix}.bai') into bai_files
 	if( (params.recalibration=="false")&(params.indel_realignment=="false") ) publishDir params.out_folder, mode: 'move'
 
         script:
