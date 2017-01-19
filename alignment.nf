@@ -172,8 +172,10 @@ if(mode=='fastq'){
 	file fasta_ref_alt
                  
         output:
-        set val(file_tag), set val(suffix), file('${file_tag}${suffix}.bam') into bam_files
-	set val(file_tag), set val(suffix), file('${file_tag}${suffix}.bai') into bai_files
+        set val(file_tag)
+	set val(suffix)
+	file('${file_tag}${suffix}.bam') into bam_files
+	file('${file_tag}${suffix}.bai') into bai_files
 	if( (params.recalibration=="false")&(params.indel_realignment=="false") ) publishDir params.out_folder, mode: 'move'
 
         shell:
@@ -206,12 +208,15 @@ if(params.indel_realignment != "false"){
             memory params.mem+'G'
             tag { file_tag }
             input:
-	    set val(file_tag), file("${file_tag}_tmp.bam") from bam_files
-	    set val(file_tag), file("${file_tag}_tmp.bai") from bai_files
+	    set val(file_tag)
+	    file("${file_tag}_tmp.bam") from bam_files
+	    file("${file_tag}_tmp.bai") from bai_files
             output:
-            set val(file_tag), file("${file_tag}_target_intervals.list") into indel_realign_target_files
-            set val(file_tag), set val(suffix), file('${file_tag}${suffix}.bam') into bam_files2
-	    set val(file_tag), set val(suffix), file('${file_tag}${suffix}.bai') into bai_files2
+            set val(file_tag)
+	    file("${file_tag}_target_intervals.list") into indel_realign_target_files
+            set val(suffix)
+	    file('${file_tag}${suffix}.bam') into bam_files2
+	    file('${file_tag}${suffix}.bai') into bai_files2
 	    if(params.recalibration=="false") publishDir params.out_folder, mode: 'move'
 	    
             script:
@@ -242,11 +247,13 @@ if(params.indel_realignment != "false"){
         tag { file_tag }
         
         input:
-        set val(file_tag), file("${file_tag}_tmp.bam") from bam_files
-	set val(file_tag), file("${file_tag}_tmp.bai") from bai_files
+        set val(file_tag)
+	file("${file_tag}_tmp.bam") from bam_files
+	file("${file_tag}_tmp.bai") from bai_files
         output:
-        set val(file_tag), file("${file_tag}_tmp.bam") into bam_files2
-	set val(file_tag), file("${file_tag}_tmp.bai") into bai_files2
+        set val(file_tag)
+	file("${file_tag}_tmp.bam") into bam_files2
+	file("${file_tag}_tmp.bai") into bai_files2
     }
     }
 }
@@ -259,14 +266,17 @@ process base_quality_score_recalibration {
     tag { file_tag }
         
     input:
-    set val(file_tag), file("${file_tag}_tmp.bam") from bam_files2
-    set val(file_tag), file("${file_tag}_tmp.bai") from bai_files2
+    set val(file_tag)
+    file("${file_tag}_tmp.bam") from bam_files2
+    file("${file_tag}_tmp.bai") from bai_files2
     output:
-    set val(file_tag), file("${file_tag}_recal.table") into recal_table_files
-    set val(file_tag), file("${file_tag}_post_recal.table") into recal_table_post_files
-    set val(file_tag), file("${file_tag}_recalibration_plots.pdf") into recal_plots_files
-    set val(file_tag), set val(suffix), file("${file_tag}${suffix}.bam") into recal_bam_files
-    set val(file_tag), set val(suffix), file("${file_tag}${suffix}.bai") into recal_bai_files
+    set val(file_tag)
+    file("${file_tag}_recal.table") into recal_table_files
+    file("${file_tag}_post_recal.table") into recal_table_post_files
+    file("${file_tag}_recalibration_plots.pdf") into recal_plots_files
+    set val(suffix)
+    file("${file_tag}${suffix}.bam") into recal_bam_files
+    file("${file_tag}${suffix}.bai") into recal_bai_files
     publishDir params.out_folder, mode: 'move'
 
     script:
