@@ -107,7 +107,7 @@ if(mode=='bam'){
  	}else{
 	    suffix='_tmp'
 	}
-	file_name='${file_tag}'+'${suffix}'
+	file_name=file_tag+suffix
 	if(params.alt=="false"){
 	  ignorealt='-j'
 	  postalt=''
