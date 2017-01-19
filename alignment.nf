@@ -300,3 +300,4 @@ process base_quality_score_recalibration {
     rm !{file_tag}_tmp.bai
     '''
 }
+}
