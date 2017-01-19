@@ -96,8 +96,8 @@ if(mode=='bam'){
 	file fasta_ref_alt
      
         output:
-	set val(file_name), file('${file_name}.bam') into bam_files
-	set val(file_name), file('${file_name}.bai') into bai_files
+	set val(file_name), file("${file_name}.bam") into bam_files
+	set val(file_name), file("${file_name}.bai") into bai_files
 	if( (params.recalibration=="false")&(params.indel_realignment=="false") ) publishDir params.out_folder, mode: 'move'
 
         shell:
@@ -167,8 +167,8 @@ if(mode=='fastq'){
 	file fasta_ref_alt
                  
         output:
-	set val(file_name), file('${file_name}.bam') into bam_files
-	set val(file_name), file('${file_name}.bai') into bai_files
+	set val(file_name), file("${file_name}.bam") into bam_files
+	set val(file_name), file("${file_name}.bai") into bai_files
 	if( (params.recalibration=="false")&(params.indel_realignment=="false") ) publishDir params.out_folder, mode: 'move'
 
         shell:
@@ -206,8 +206,8 @@ if(params.indel_realignment != "false"){
 	    set val(file_tag), file("${file_tag}_tmp.bai") from bai_files
             output:
             set val(file_tag), file("${file_tag}_target_intervals.list") into indel_realign_target_files
-            set val(file_name), file('${file_name}.bam') into bam_files
-	    set val(file_name), file('${file_name}.bai') into bai_files
+            set val(file_name), file("${file_name}.bam") into bam_files
+	    set val(file_name), file("${file_name}.bai") into bai_files
 	    if(params.recalibration=="false") publishDir params.out_folder, mode: 'move'
 	    
             shell:
