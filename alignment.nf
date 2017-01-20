@@ -96,19 +96,15 @@ if(mode=='bam'){
 	file fasta_ref_alt
      
         output:
-	set val(file_tag), file("${file_name}.bam") into bam_files
-	file("${file_name}.bai") into bai_files
+	set val(file_tag_new), file("${file_tag_new}.bam") into bam_files
+	file("${file_tag_new}.bai") into bai_files
 	if( (params.recalibration=="false")&(params.indel_realignment=="false") ) publishDir params.out_folder, mode: 'move'
 
         shell:
 	file_tag = infile.baseName
-        if( (params.recalibration=="false")&(params.indel_realignment=="false") ){
-    	    suffix='_new'
-	    if(params.alt!="false") suffix=suffix+'_alt'
- 	}else{
-	    suffix='_tmp'
-	}
-	file_name=file_tag+suffix
+	file_tag_new=file_tag+'_realigned'
+	if(params.alt!="false") file_tag_new=file_tag_new+'_alt'
+	
 	if(params.alt=="false"){
 	  ignorealt='-j'
 	  postalt=''
@@ -118,8 +114,8 @@ if(mode=='bam'){
 	}
         '''
         set -o pipefail
-        samtools collate -uOn 128 !{file_tag}.bam tmp_!{file_tag} | samtools fastq - | bwa mem !{ignorealt} -M -t!{task.cpus} -R "@RG\\tID:!{file_tag}\\tSM:!{file_tag}\\t!{params.RG}" -p !{params.fasta_ref} - | !{postalt} samblaster --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort -t !{task.cpus} -m !{params.mem_sambamba}G --tmpdir=!{file_tag}_tmp -o !{file_name}.bam /dev/stdin
-	mv !{file_name}.bam.bai !{file_name}.bai 
+        samtools collate -uOn 128 !{file_tag}.bam tmp_!{file_tag} | samtools fastq - | bwa mem !{ignorealt} -M -t!{task.cpus} -R "@RG\\tID:!{file_tag}\\tSM:!{file_tag}\\t!{params.RG}" -p !{params.fasta_ref} - | !{postalt} samblaster --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort -t !{task.cpus} -m !{params.mem_sambamba}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
+	mv !{file_tag_new}.bam.bai !{file_tag_new}.bai 
         '''
     }
 }
@@ -168,19 +164,14 @@ if(mode=='fastq'){
 	file fasta_ref_alt
                  
         output:
-	set val(file_tag), file("${file_name}.bam") into bam_files
-	file("${file_name}.bai") into bai_files
+	set val(file_tag_new), file("${file_tag_new}.bam") into bam_files
+	file("${file_tag_new}.bai") into bai_files
 	if( (params.recalibration=="false")&(params.indel_realignment=="false") ) publishDir params.out_folder, mode: 'move'
 
         shell:
         file_tag = pair[0].name.replace("${params.suffix1}.${params.fastq_ext}","")
-	if( (params.recalibration=="false")&(params.indel_realignment=="false") ){
-    	    suffix='_new'
-	    if(params.alt!="false") suffix=suffix+'_alt'
- 	}else{
-	    suffix='_tmp'
-	}
-	file_name=file_tag+suffix
+	file_tag_new=file_tag
+	if(params.alt!="false") file_tag_new=file_tag_new+'_alt'
 	if(params.alt=="false"){
 	  ignorealt='-j'
 	  postalt=''
@@ -190,8 +181,8 @@ if(mode=='fastq'){
 	}
         '''
         set -o pipefail
-        bwa mem -M -t!{task.cpus} -R "@RG\\tID:!{file_tag}\\tSM:!{file_tag}\\t!{params.RG}" !{params.fasta_ref} !{pair[0]} !{pair[1]} | !{postalt} samblaster --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort -t !{task.cpus} -m !{params.mem}G --tmpdir=!{file_tag}_tmp -o !{file_name}.bam /dev/stdin
-	mv !{file_name}.bam.bai !{file_name}.bai 
+        bwa mem -M -t!{task.cpus} -R "@RG\\tID:!{file_tag}\\tSM:!{file_tag}\\t!{params.RG}" !{params.fasta_ref} !{pair[0]} !{pair[1]} | !{postalt} samblaster --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort -t !{task.cpus} -m !{params.mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
+	mv !{file_tag_new}.bam.bai !{file_tag_new}.bai 
         '''
      }
 }
@@ -203,33 +194,22 @@ if(params.indel_realignment != "false"){
             memory params.mem+'G'
             tag { file_tag }
             input:
-	    set val(file_tag), file("${file_tag}_tmp.bam") from bam_files
-	    file("${file_tag}_tmp.bai") from bai_files
+	    set val(file_tag), file("${file_tag}.bam") from bam_files
+	    file("${file_tag}.bai") from bai_files
             output:
-            file("${file_tag}_target_intervals.list") into indel_realign_target_files
-            set val(file_tag), file("${file_name}.bam") into bam_files
-	    file("${file_name}.bai") into bai_files
+            file("${file_tag_new}_target_intervals.list") into indel_realign_target_files
+            set val(file_tag_new), file("${file_tag_new}.bam") into bam_files2
+	    file("${file_tag_new}.bai") into bai_files2
 	    if(params.recalibration=="false") publishDir params.out_folder, mode: 'move'
 	    
             shell:
-    	    if(params.recalibration=="false"){
-	        suffix='_new'
-		if(params.alt!="false") suffix=suffix+'_alt'
-		suffix=suffix+'_indelrealigned'
-	    }else{
-		suffix='_tmp'
-	    }
-	    file_name=file_tag+suffix
+	    file_tag_new=file_tag+'_indelrealigned'
             '''
 	    indelsvcf=`ls !{params.GATK_bundle}/*indels*.vcf`
 	    knowncom=''
 	    for ll in $indelsvcf; do knowncom=$knowncom' -known '$ll; done
-            java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T RealignerTargetCreator -nt !{params.cpu} -R !{params.fasta_ref} -I !{file_tag}_tmp.bam $knowncom -o !{file_tag}_target_intervals.list
-            java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T IndelRealigner -R !{params.fasta_ref} -I !{file_tag}_tmp.bam -targetIntervals !{file_tag}_target_intervals.list $knowncom -o !{file_tag}_tmp2.bam
-            rm !{file_tag}_tmp.bam
-	    rm !{file_tag}_tmp.bai
-            mv !{file_tag}_tmp2.bam !{file_tag}!{suffix}.bam
-	    mv !{file_tag}_tmp2.bai !{file_tag}!{suffix}.bai
+            java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T RealignerTargetCreator -nt !{params.cpu} -R !{params.fasta_ref} -I !{file_tag}.bam $knowncom -o !{file_tag_new}_target_intervals.list
+            java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T IndelRealigner -R !{params.fasta_ref} -I !{file_tag}.bam -targetIntervals !{file_tag_new}_target_intervals.list $knowncom -o !{file_tag_new}.bam
             '''
         }
 }else{
@@ -240,14 +220,14 @@ if(params.indel_realignment != "false"){
         tag { file_tag }
         
         input:
-        set val(file_tag), file("${file_tag}_tmp.bam") from bam_files
-	file("${file_tag}_tmp.bai") from bai_files
+        set val(file_tag), file("${file_tag}.bam") from bam_files
+	file("${file_tag}.bai") from bai_files
         output:
-        set val(file_tag), file("${file_tag}_tmp.bam") into bam_files2
-	file("${file_tag}_tmp.bai") into bai_files2
+        set val(file_tag), file("${file_tag}.bam") into bam_files2
+	file("${file_tag}.bai") into bai_files2
 	shell:
 	'''
-        touch !{file_tag}_tmp.bam
+        touch !{file_tag}.bam
 	'''
     }
     }
@@ -261,22 +241,18 @@ if(params.recalibration!= "false"){
     tag { file_tag }
         
     input:
-    set val(file_tag), file("${file_tag}_tmp.bam") from bam_files2
-    file("${file_tag}_tmp.bai") from bai_files2
+    set val(file_tag), file("${file_tag}.bam") from bam_files2
+    file("${file_tag}.bai") from bai_files2
     output:
-    file("${file_tag}_recal.table") into recal_table_files
-    file("${file_tag}_post_recal.table") into recal_table_post_files
-    file("${file_tag}_recalibration_plots.pdf") into recal_plots_files
-    set val(file_tag), file("${file_name}.bam") into recal_bam_files
-    file("${file_name}.bai") into recal_bai_files
+    file("${file_tag_new}_recal.table") into recal_table_files
+    file("${file_tag_new}_post_recal.table") into recal_table_post_files
+    file("${file_tag_new}_recalibration_plots.pdf") into recal_plots_files
+    set val(file_tag_new), file("${file_tag_new}.bam") into recal_bam_files
+    file("${file_tag_new}.bai") into recal_bai_files
     publishDir params.out_folder, mode: 'move'
 
     shell:
-    suffix='_new'
-    if(params.alt!="false") suffix=suffix+'_alt'
-    if(params.indel_realignment!="false") suffix=suffix+'_indelrealigned'
-    suffix=suffix+'_BQSrecalibrated'
-    file_name=file_tag+suffix
+    file_tag_new=file_tag+'_BQSrecalibrated'
     '''
     indelsvcf=`ls !{params.GATK_bundle}/*indels*.vcf`
     dbsnpvcfs=(`ls !{params.GATK_bundle}/*dbsnp*.vcf`)
@@ -284,12 +260,10 @@ if(params.recalibration!= "false"){
     knownSitescom=''
     for ll in $indelsvcf; do knownSitescom=$knownSitescom' -knownSites '$ll; done
     knownSitescom=$knownSitescom' -knownSites '$dbsnpvcf
-    java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T BaseRecalibrator -nct !{params.cpu} -R !{params.fasta_ref} -I !{file_tag}_tmp.bam $knownSitescom -L !{params.intervals} -o !{file_tag}_recal.table
-    java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T BaseRecalibrator -nct !{params.cpu} -R !{params.fasta_ref} -I !{file_tag}_tmp.bam $knownSitescom -BQSR !{file_tag}_recal.table -L !{params.intervals} -o !{file_tag}_post_recal.table		
-    java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T AnalyzeCovariates -R !{params.fasta_ref} -before !{file_tag}_recal.table -after !{file_tag}_post_recal.table -plots !{file_tag}_recalibration_plots.pdf	
-    java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T PrintReads -nct !{params.cpu} -R !{params.fasta_ref} -I !{file_tag}_tmp.bam -BQSR !{file_tag}_recal.table -L !{params.intervals} -o !{file_tag}!{suffix}.bam	
-    rm !{file_tag}_tmp.bam
-    rm !{file_tag}_tmp.bai
+    java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T BaseRecalibrator -nct !{params.cpu} -R !{params.fasta_ref} -I !{file_tag}.bam $knownSitescom -L !{params.intervals} -o !{file_tag_new}_recal.table
+    java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T BaseRecalibrator -nct !{params.cpu} -R !{params.fasta_ref} -I !{file_tag}.bam $knownSitescom -BQSR !{file_tag_new}_recal.table -L !{params.intervals} -o !{file_tag_new}_post_recal.table		
+    java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T AnalyzeCovariates -R !{params.fasta_ref} -before !{file_tag_new}_recal.table -after !{file_tag_new}_post_recal.table -plots !{file_tag_new}_recalibration_plots.pdf	
+    java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T PrintReads -nct !{params.cpu} -R !{params.fasta_ref} -I !{file_tag}.bam -BQSR !{file_tag_new}_recal.table -L !{params.intervals} -o !{file_tag_new}.bam	
     '''
     }
 }
