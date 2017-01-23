@@ -42,23 +42,23 @@ For the **base quality score recalibration**:
 
 ## Usage
 ```bash
-nextflow run alignment-nf --input_folder input --fasta_ref hg19.fasta --out_folder output
+nextflow run iarcbioinfo/alignment-nf --input_folder input --fasta_ref hg19.fasta --out_folder output
 ```
 ### Enable ALT mode
 To use the alternative contigs handling mode, you must provide the **path to an ALT aware genome reference** (e.g., hg38) AND add the ***--alt* option**, as well as satisfy the requirements above mentionned. For example:
 ```bash
-nextflow run alignment-nf --input_folder input --fasta_ref reference/hs38DH.fa --js /user/bin/k8/k8 --postaltjs /user/bin/bwa-0.7.15/bwakit/bwa-postalt.js -out_folder output --alt
+nextflow run iarcbioinfo/alignment-nf --input_folder input --fasta_ref reference/hs38DH.fa --js /user/bin/k8/k8 --postaltjs /user/bin/bwa-0.7.15/bwakit/bwa-postalt.js -out_folder output --alt
 ```
 ### Enable local indel realignment
-To use the local indel realignment step, you must provide the **path to the GATK jar file**, the **GATK bundle folder** AND add the ***--indel_realignment* option**, as well as satisfy the requirements above mentionned. For example:
+To use the local indel realignment step, you must provide the **path to the GATK jar file**, the **GATK bundle folder**, AND add the ***--indel_realignment* option**, as well as satisfy the requirements above mentionned. For example:
 ```bash
-nextflow run alignment-nf --GATK_bundle GATKbundle/hg19 --input_folder input --fasta_ref reference/hg19.fa --GATK_folder /user/bin7GATK-3.6-0 --out_folder output --indel_realignment
+nextflow run iarcbioinfo/alignment-nf --GATK_bundle GATKbundle/hg19 --input_folder input --fasta_ref reference/hg19.fa --GATK_folder /user/bin7GATK-3.6-0 --out_folder output --indel_realignment
 ```
 
 ### Enable base quality score recalibration
-To use the base quality score recalibration step, you must provide the **path to the GATK jar file**, the **GATK bundle folder** AND add the ***--indel_realignment* option**, as well as satisfy the requirements above mentionned. For example:
+To use the base quality score recalibration step, you must provide the **path to the GATK jar file**, the **GATK bundle folder**, a **bed file**, AND add the ***--recalibration* option**, as well as satisfy the requirements above mentionned. For example:
 ```bash
-nextflow run alignment-nf --GATK_bundle GATKbundle/hg19 --input_folder input --fasta_ref reference/hg19.fa --GATK_folder /user/bin7GATK-3.6-0 --intervals reference/hg19_intervals.bed --out_folder output --recalibration
+nextflow run iarcbioinfo/alignment-nf --GATK_bundle GATKbundle/hg19 --input_folder input --fasta_ref reference/hg19.fa --GATK_folder /user/bin7GATK-3.6-0 --intervals reference/hg19_intervals.bed --out_folder output --recalibration
 ```
 
 ## All parameters
