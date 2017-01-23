@@ -8,28 +8,36 @@ Nextflow pipeline to perform BAM realignment or fastq alignment, with/without lo
 
 ## Prerequisites
 For the **basic fastq files alignment** without indel realignment, base quality score recalibration, nor alternative contif handling, the script requires the following programs:
-- *bwa*
-- *samblaster*
-- *sambamba*
+- [*nextflow*](http://www.nextflow.io/). Install with
+	```bash
+	curl -fsSL get.nextflow.io | bash
+	```
+	And move it to a location in your `$PATH` (e.g., `/usr/local/bin`):
+	```bash
+	sudo mv nextflow /usr/local/bin
+	```
+- [*bwa*](https://github.com/lh3/bwa)
+- [*samblaster*](https://github.com/GregoryFaust/samblaster)
+- [*sambamba*](https://github.com/lomereiter/sambamba)
 and the following files:
 - a fasta reference genome with its index files (*.fai*, *.sa*, *.bwt*, *.ann*, *.amb*, *.pac*; in the same directory)
 - a folder with fastq files
 
 In addition, for the **bam files realignment**:
-- *samtools*
+- [*samtools*](http://samtools.sourceforge.net/)
+- a folder with bam files
 
 For the **ALT contigs handling**, additional softwares and scripts are required:
-- the *k8* javascript execution shell
-- javascript bwa-postalt.js from *bwakit*
-and also the additional *.alt* file must be in the same directory as the reference genome file.
+- the *k8* javascript execution shell (e.g., available in the [*bwakit*](https://sourceforge.net/projects/bio-bwa/files/bwakit/) archive)
+- javascript bwa-postalt.js and the additional fasta reference *.alt* file from [*bwakit*](https://github.com/lh3/bwa/tree/master/bwakit) must be in the same directory as the reference genome file.
 
 For the **indel realignment**:
-- GATK *GenomeAnalysisTK.jar*
-- GATK bundle VCF files with lists of indels (recommended: 1000 genomes and Mills gold standard VCFs)
+- GATK [*GenomeAnalysisTK.jar*](https://software.broadinstitute.org/gatk/guide/quickstart)
+- [GATK bundle](https://software.broadinstitute.org/gatk/download/bundle) VCF files with lists of indels (recommended: 1000 genomes and Mills gold standard VCFs)
 
 For the **base quality score recalibration**:
-- GATK *GenomeAnalysisTK.jar*
-- GATK bundle VCF files with lists of indels and SNVs (recommended: 1000 genomes indels, Mills gold standard indels VCFs, dbsnp VCF)
+- GATK [*GenomeAnalysisTK.jar*](https://software.broadinstitute.org/gatk/guide/quickstart)
+- [GATK bundle](https://software.broadinstitute.org/gatk/download/bundle) VCF files with lists of indels and SNVs (recommended: 1000 genomes indels, Mills gold standard indels VCFs, dbsnp VCF)
 - bed file with intervals to be considered
 
 ## Usage
