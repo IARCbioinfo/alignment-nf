@@ -29,6 +29,7 @@ params.recalibration = "false"
 params.js           = "k8"
 params.postaltjs    = "bwa-postalt.js"
 params.alt          = "false"
+params.trim         = "false"
 
 if (params.help) {
     log.info ''
@@ -112,9 +113,15 @@ if(mode=='bam'){
 	  ignorealt=''
 	  postalt=params.js+' '+params.postaltjs+' '+params.fasta_ref+'.alt |'
 	}
+	if(params.trim=="false"){
+	  preproc=''
+	}else{
+	  preproc='AdapterRemoval --interleaved --file1 /dev/stdin --output1 /dev/stdout |'
+	}
+	
         '''
         set -o pipefail
-        samtools collate -uOn 128 !{file_tag}.bam tmp_!{file_tag} | samtools fastq - | bwa mem !{ignorealt} -M -t!{task.cpus} -R "@RG\\tID:!{file_tag}\\tSM:!{file_tag}\\t!{params.RG}" -p !{params.fasta_ref} - | !{postalt} samblaster --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort -t !{task.cpus} -m !{params.mem_sambamba}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
+        samtools collate -uOn 128 !{file_tag}.bam tmp_!{file_tag} | samtools fastq - | !{preproc} bwa mem !{ignorealt} -M -t!{task.cpus} -R "@RG\\tID:!{file_tag}\\tSM:!{file_tag}\\t!{params.RG}" -p !{params.fasta_ref} - | !{postalt} samblaster --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort -t !{task.cpus} -m !{params.mem_sambamba}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
 	mv !{file_tag_new}.bam.bai !{file_tag_new}.bai 
         '''
     }
