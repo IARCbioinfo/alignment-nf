@@ -104,7 +104,8 @@ if(mode=='bam'){
         shell:
 	file_tag = infile.baseName
 	file_tag_new=file_tag+'_realigned'
-	if(params.alt!="false") file_tag_new=file_tag_new+'_alt'
+	if(params.trim!="false") file_tag_new=file_tag_new+'_trimmed'
+	if(params.alt!="false")  file_tag_new=file_tag_new+'_alt'
 	
 	if(params.alt=="false"){
 	  ignorealt='-j'
@@ -116,6 +117,7 @@ if(mode=='bam'){
 	if(params.trim=="false"){
 	  preproc=''
 	}else{
+	  	
 	  preproc='AdapterRemoval --interleaved --file1 /dev/stdin --output1 /dev/stdout |'
 	}
 	
@@ -178,7 +180,8 @@ if(mode=='fastq'){
         shell:
         file_tag = pair[0].name.replace("${params.suffix1}.${params.fastq_ext}","")
 	file_tag_new=file_tag
-	if(params.alt!="false") file_tag_new=file_tag_new+'_alt'
+	if(params.trim!="false") file_tag_new=file_tag_new+'_trimmed'
+	if(params.alt!="false")  file_tag_new=file_tag_new+'_alt'
 	if(params.alt=="false"){
 	  ignorealt='-j'
 	  postalt=''
@@ -186,11 +189,20 @@ if(mode=='fastq'){
 	  ignorealt=''
 	  postalt=params.js+' '+params.postaltjs+' '+params.fasta_ref+'.alt |'
 	}
-        '''
-        set -o pipefail
-        bwa mem -M -t!{task.cpus} -R "@RG\\tID:!{file_tag}\\tSM:!{file_tag}\\t!{params.RG}" !{params.fasta_ref} !{pair[0]} !{pair[1]} | !{postalt} samblaster --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort -t !{task.cpus} -m !{params.mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
-	mv !{file_tag_new}.bam.bai !{file_tag_new}.bai 
-        '''
+	if(params.trim=="false"){
+		'''
+        	set -o pipefail
+		bwa mem !{ignorealt} -M -t!{task.cpus} -R "@RG\\tID:!{file_tag}\\tSM:!{file_tag}\\t!{params.RG}" !{params.fasta_ref} !{pair[0]} !{pair[1]} | !{postalt} samblaster --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort -t !{task.cpus} -m !{params.mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
+		mv !{file_tag_new}.bam.bai !{file_tag_new}.bai 
+		'''
+ 	}else{
+		'''
+        	set -o pipefail
+		AdapterRemoval --file1 !{pair[0]} --file2 !{pair[1]} --interleaved-output --output1 /dev/stdout | bwa mem !{ignorealt} -M -t!{task.cpus} -R "@RG\\tID:!{file_tag}\\tSM:!{file_tag}\\t!{params.RG}" -p !{params.fasta_ref} - | !{postalt} samblaster --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort -t !{task.cpus} -m !{params.mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
+		mv !{file_tag_new}.bam.bai !{file_tag_new}.bai 
+		'''
+	}
+	
      }
 }
 
