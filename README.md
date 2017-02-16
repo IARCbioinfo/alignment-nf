@@ -27,6 +27,9 @@ In addition, for the **bam files realignment**:
 - [*samtools*](http://samtools.sourceforge.net/)
 - a folder with bam files
 
+For the **adapter sequence trimming**:
+- [*AdapterRemoval*](https://github.com/MikkelSchubert/adapterremoval)
+
 For the **ALT contigs handling**, additional softwares and scripts are required:
 - the *k8* javascript execution shell (e.g., available in the [*bwakit*](https://sourceforge.net/projects/bio-bwa/files/bwakit/) archive)
 - javascript bwa-postalt.js and the additional fasta reference *.alt* file from [*bwakit*](https://github.com/lh3/bwa/tree/master/bwakit) must be in the same directory as the reference genome file.
@@ -44,6 +47,12 @@ For the **base quality score recalibration**:
 ```bash
 nextflow run iarcbioinfo/alignment-nf --input_folder input --fasta_ref hg19.fasta --out_folder output
 ```
+### Enable adapter trimming
+To use the adapter trimming step, you must add the ***--trim* option**, as well as satisfy the requirements above mentionned. For example:
+```bash
+nextflow run iarcbioinfo/alignment-nf --input_folder input --fasta_ref reference/hs38DH.fa -out_folder output --trim
+```
+
 ### Enable ALT mode
 To use the alternative contigs handling mode, you must provide the **path to an ALT aware genome reference** (e.g., hg38) AND add the ***--alt* option**, as well as satisfy the requirements above mentionned. For example:
 ```bash
@@ -78,6 +87,7 @@ nextflow run iarcbioinfo/alignment-nf --GATK_bundle GATKbundle/hg19 --input_fold
 *--intervals*    | | bed file with interval list|
 *--GATK_bundle*  | bundle | path to GATK bundle files|
 *--GATK_folder*  | . | path to GATK *GenomeAnalysisTK.jar* file |
+*--trim*         | false | enable adapter sequence trimming|
 *--indel_realignment* | false | perform local indel realignment (GATK)|
 *--recalibration* | false | perform quality score recalibration (GATK)|
 *--js*           | k8 | path to javascript interpreter *k8*|
