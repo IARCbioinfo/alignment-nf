@@ -119,8 +119,8 @@ if(mode=='bam'){
 	  	
 	  preproc='AdapterRemoval --interleaved --file1 /dev/stdin --output1 /dev/stdout |'
 	}
-	bwa_threads  = params.threads.intdiv(2) - 1
-	sort_threads = params.threads.intdiv(2) - 1
+	bwa_threads  = params.cpu.intdiv(2) - 1
+	sort_threads = params.cpu.intdiv(2) - 1
 	sort_mem     = params.mem.intdiv(4)
 	'''
         set -o pipefail
@@ -189,8 +189,8 @@ if(mode=='fastq'){
 	  ignorealt=''
 	  postalt=params.js+' '+params.postaltjs+' '+params.fasta_ref+'.alt |'
 	}
-	bwa_threads  = params.threads.intdiv(2) - 1
-	sort_threads = params.threads.intdiv(2) - 1
+	bwa_threads  = params.cpu.intdiv(2) - 1
+	sort_threads = params.cpu.intdiv(2) - 1
 	sort_mem     = params.mem.intdiv(4)
 	if(params.trim=="false"){
 		'''
