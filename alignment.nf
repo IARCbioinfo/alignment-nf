@@ -225,7 +225,7 @@ if(params.indel_realignment != "false"){
             shell:
 	    file_tag_new=file_tag+'_indelrealigned'
             '''
-	    indelsvcf=`ls !{params.GATK_bundle}/*indels*.vcf* | grep -v ".tbi"`
+	    indelsvcf=`ls !{params.GATK_bundle}/*indels*.vcf* | grep -v ".tbi" | grep -v ".idx"`
 	    knowncom=''
 	    for ll in $indelsvcf; do knowncom=$knowncom' -known '$ll; done
             java -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T RealignerTargetCreator -nt !{params.cpu} -R !{params.fasta_ref} -I !{file_tag}.bam $knowncom -o !{file_tag_new}_target_intervals.list
@@ -275,8 +275,8 @@ if(params.recalibration!= "false"){
     shell:
     file_tag_new=file_tag+'_BQSrecalibrated'
     '''
-    indelsvcf=(`ls !{params.GATK_bundle}/*indels*.vcf* | grep -v ".tbi"`)
-    dbsnpvcfs=(`ls !{params.GATK_bundle}/*dbsnp*.vcf* | grep -v ".tbi"`)
+    indelsvcf=(`ls !{params.GATK_bundle}/*indels*.vcf* | grep -v ".tbi" | grep -v ".idx"`)
+    dbsnpvcfs=(`ls !{params.GATK_bundle}/*dbsnp*.vcf* | grep -v ".tbi" | grep -v ".idx"`)
     dbsnpvcf=${dbsnpvcfs[@]:(-1)}
     knownSitescom=''
     for ll in $indelsvcf; do knownSitescom=$knownSitescom' -knownSites '$ll; done
