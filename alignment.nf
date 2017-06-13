@@ -1,71 +1,123 @@
 #! /usr/bin/env nextflow
-// usage : ./alignment.nf --input_folder input/ --cpu 8 --mem 32 --ref hg19.fasta --RG "PL:ILLUMINA"
-/*
-vim: syntax=groovy
--*- mode: groovy;-*- */
 
-// requirement:
-// - samtools
-// - samblaster
-// - sambamba
+/*vim: syntax=groovy -*- mode: groovy;-*- */
 
-//default values
-params.help         = null
+// Copyright (C) 2017 IARC/WHO
+
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 params.input_folder = '.'
-params.fasta_ref    = 'hg19.fasta'
+params.ref          = 'hg19.fasta'
 params.cpu          = 8
 params.mem          = 32
 params.RG           = "PL:ILLUMINA"
 params.fastq_ext    = "fastq.gz"
 params.suffix1      = "_1"
 params.suffix2      = "_2"
-params.out_folder   = "."
-params.intervals    = ""
-params.GATK_bundle       = "bundle"
+params.output_folder = "."
+params.bed          = ""
+params.GATK_bundle  = "bundle"
 params.GATK_folder  = "."
-params.indel_realignment = "false"
-params.recalibration = "false"
 params.js           = "k8"
 params.postaltjs    = "bwa-postalt.js"
-params.alt          = "false"
-params.trim         = "false"
+params.indel_realignment = null
+params.recalibration = null
+params.help         = null
+params.alt          = null
+params.trim         = null
+
+
+log.info ""
+log.info "--------------------------------------------------------"
+log.info "  alignment-nf 1.0.0: alignment/realignment workflow for whole exome/whole genome sequencing "
+log.info "--------------------------------------------------------"
+log.info "Copyright (C) IARC/WHO"
+log.info "This program comes with ABSOLUTELY NO WARRANTY; for details see LICENSE"
+log.info "This is free software, and you are welcome to redistribute it"
+log.info "under certain conditions; see LICENSE for details."
+log.info "--------------------------------------------------------"
+log.info ""
+
 
 if (params.help) {
+    log.info "--------------------------------------------------------"
+    log.info "  USAGE                                                 "
+    log.info "--------------------------------------------------------"
     log.info ''
-    log.info '-------------------------------------------------------------'
-    log.info 'NEXTFLOW WHOLE EXOME/GENOME ALIGNMENT OR REALIGNMENT PIPELINE'
-    log.info '-------------------------------------------------------------'
-    log.info ''
-    log.info 'Usage: '
-    log.info 'nextflow run alignment.nf --input_folder input/ --fasta_ref hg19.fasta [--cpu 8] [--mem 32] [--RG "PL:ILLUMINA"] [--fastq_ext fastq.gz] [--suffix1 _1] [--suffix2 _2] [--out_folder output/]'
+    log.info 'nextflow run iarcbioinfo/alignment.nf [-with-docker] --input_folder input/ --ref hg19.fasta [OPTIONS]'
     log.info ''
     log.info 'Mandatory arguments:'
-    log.info '    --input_folder   FOLDER                  Folder containing BAM or fastq files to be aligned.'
-    log.info '    --fasta_ref          FILE                    Reference fasta file (with index).'
+    log.info '--input_folder   FOLDER                  Folder containing BAM or fastq files to be aligned.'
+    log.info '--ref          FILE                    Reference fasta file (with index).'
+    log.info '--output_folder     STRING                Output folder (default: results_alignment).'
+    log.info ""
     log.info 'Optional arguments:'
-    log.info '    --indel_realignment                    Performs local indel realignment (default: no).'
     log.info '    --cpu          INTEGER                 Number of cpu used by bwa mem and sambamba (default: 8).'
-    log.info '    --mem          INTEGER                 Size of memory used by sambamba (in GB) (default: 32).'
+    log.info '    --mem          INTEGER                 Size of memory used for alignment (in GB) (default: 32).'
+    log.info '    --mem_sambamba          INTEGER                 Size of memory used by sambamba (in GB) (default: 1).'
     log.info '    --RG           STRING                  Samtools read group specification with "\t" between fields.'
     log.info '                                           e.g. --RG "PL:ILLUMINA\tDS:custom_read_group".'
-    log.info '                                           Default: "ID:bam_file_name\tSM:bam_file_name".'
+    log.info '                                           Default: "PL:ILLUMINA".'
     log.info '    --fastq_ext      STRING                Extension of fastq files (default : fastq.gz)'
     log.info '    --suffix1        STRING                Suffix of fastq files 1 (default : _1)'
     log.info '    --suffix2        STRING                Suffix of fastq files 2 (default : _2)'
-    log.info '    --out_folder     STRING                Output folder (default: results_alignment).'
+
+    log.info '    --bed        STRING                bed file with interval list'
+    log.info '    --GATK_bundle        STRING                path to GATK bundle files (default : .)'
+    log.info '    --GATK_folder        STRING                path to GATK GenomeAnalysisTK.jar file (default : .)'
+    log.info '    --js        STRING                path to javascript interpreter k8'
+    log.info '    --postaltjs        STRING                path to postalignment javascript bwa-postalt.js'
+    log.info ""
+    log.info "Flags:"
+    log.info '--trim                    enable adapter sequence trimming'
+    log.info '--indel_realignment                    performs local indel realignment (default: no).'
+    log.info '--recalibration                    performs base quality score recalibration (GATK)'
+    log.info '--alt                    enable alternative contig handling (for reference genome hg38)'
     log.info ''
     exit 1
+}else {
+  /* Software information */
+  log.info "input_folder=${params.input_folder}"
+  log.info "ref=${params.ref}"
+  log.info "cpu=${params.cpu}"
+  log.info "mem=${params.mem}"
+  log.info "RG=${params.RG}"
+  log.info "fastq_ext=${params.fastq_ext}"
+  log.info "suffix1=${params.suffix1}"
+  log.info "suffix2=${params.suffix2}"
+  log.info "output_folder=${params.output_folder}"
+  log.info "bed=${params.bed}"
+  log.info "GATK_bundle=${params.GATK_bundle}"
+  log.info "GATK_folder=${params.GATK_folder}"
+  log.info "js=${params.js}"
+  log.info "postaltjs=${params.postaltjs}"
+  log.info "indel_realignment=${params.indel_realignment}"
+  log.info "recalibration=${params.recalibration}"
+  log.info "alt=${params.alt}"
+  log.info "trim=${params.trim}"
+  log.info "help=${params.help}"
 }
 
 //read files
-fasta_ref = file(params.fasta_ref)
-fasta_ref_fai = file( params.fasta_ref+'.fai' )
-fasta_ref_sa = file( params.fasta_ref+'.sa' )
-fasta_ref_bwt = file( params.fasta_ref+'.bwt' )
-fasta_ref_ann = file( params.fasta_ref+'.ann' )
-fasta_ref_amb = file( params.fasta_ref+'.amb' )
-fasta_ref_pac = file( params.fasta_ref+'.pac' )
-fasta_ref_alt = file( params.fasta_ref+'.alt' )
+ref = file(params.ref)
+ref_fai = file( params.ref+'.fai' )
+ref_sa = file( params.ref+'.sa' )
+ref_bwt = file( params.ref+'.bwt' )
+ref_ann = file( params.ref+'.ann' )
+ref_amb = file( params.ref+'.amb' )
+ref_pac = file( params.ref+'.pac' )
+ref_alt = file( params.ref+'.alt' )
 
 mode = 'fastq'
 if (file(params.input_folder).listFiles().findAll { it.name ==~ /.*${params.fastq_ext}/ }.size() > 0){
@@ -86,19 +138,19 @@ if(mode=='bam'){
         
         input:
         file infile from files
-	file fasta_ref
-	file fasta_ref_fai
-	file fasta_ref_sa
-	file fasta_ref_bwt
-	file fasta_ref_ann
-	file fasta_ref_amb
-	file fasta_ref_pac
-	file fasta_ref_alt
+	file ref
+	file ref_fai
+	file ref_sa
+	file ref_bwt
+	file ref_ann
+	file ref_amb
+	file ref_pac
+	file ref_alt
      
         output:
 	set val(file_tag_new), file("${file_tag_new}.bam") into bam_files
 	file("${file_tag_new}.bam.bai") into bai_files
-	if( (params.recalibration=="false")&(params.indel_realignment=="false") ) publishDir params.out_folder, mode: 'move'
+	if( (params.recalibration=="false")&(params.indel_realignment=="false") ) publishDir params.output_folder, mode: 'move'
 
         shell:
 	file_tag = infile.baseName
@@ -111,7 +163,7 @@ if(mode=='bam'){
 	  postalt=''
 	}else{
 	  ignorealt=''
-	  postalt=params.js+' '+params.postaltjs+' '+params.fasta_ref+'.alt |'
+	  postalt=params.js+' '+params.postaltjs+' '+params.ref+'.alt |'
 	}
 	if(params.trim=="false"){
 	  preproc=''
@@ -124,7 +176,7 @@ if(mode=='bam'){
 	sort_mem     = params.mem.intdiv(4)
 	'''
         set -o pipefail
-        samtools collate -uOn 128 !{file_tag}.bam tmp_!{file_tag} | samtools fastq - | !{preproc} bwa mem !{ignorealt} -M -t!{bwa_threads} -R "@RG\\tID:!{file_tag}\\tSM:!{file_tag}\\t!{params.RG}" -p !{params.fasta_ref} - | !{postalt} samblaster --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
+        samtools collate -uOn 128 !{file_tag}.bam tmp_!{file_tag} | samtools fastq - | !{preproc} bwa mem !{ignorealt} -M -t!{bwa_threads} -R "@RG\\tID:!{file_tag}\\tSM:!{file_tag}\\t!{params.RG}" -p !{params.ref} - | !{postalt} samblaster --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
         '''
     }
 }
@@ -163,19 +215,19 @@ if(mode=='fastq'){
         
         input:
         file pair from readPairs
-	file fasta_ref
-	file fasta_ref_fai
-	file fasta_ref_sa
-	file fasta_ref_bwt
-	file fasta_ref_ann
-	file fasta_ref_amb
-	file fasta_ref_pac
-	file fasta_ref_alt
+	file ref
+	file ref_fai
+	file ref_sa
+	file ref_bwt
+	file ref_ann
+	file ref_amb
+	file ref_pac
+	file ref_alt
                  
         output:
 	set val(file_tag_new), file("${file_tag_new}.bam") into bam_files
 	file("${file_tag_new}.bam.bai") into bai_files
-	if( (params.recalibration=="false")&(params.indel_realignment=="false") ) publishDir params.out_folder, mode: 'move'
+	if( (params.recalibration=="false")&(params.indel_realignment=="false") ) publishDir params.output_folder, mode: 'move'
 
         shell:
         file_tag = pair[0].name.replace("${params.suffix1}.${params.fastq_ext}","")
@@ -187,7 +239,7 @@ if(mode=='fastq'){
 	  postalt=''
 	}else{
 	  ignorealt=''
-	  postalt=params.js+' '+params.postaltjs+' '+params.fasta_ref+'.alt |'
+	  postalt=params.js+' '+params.postaltjs+' '+params.ref+'.alt |'
 	}
 	bwa_threads  = params.cpu.intdiv(2) - 1
 	sort_threads = params.cpu.intdiv(2) - 1
@@ -195,12 +247,12 @@ if(mode=='fastq'){
 	if(params.trim=="false"){
 		'''
         	set -o pipefail
-		bwa mem !{ignorealt} -M -t!{bwa_threads} -R "@RG\\tID:!{file_tag}\\tSM:!{file_tag}\\t!{params.RG}" !{params.fasta_ref} !{pair[0]} !{pair[1]} | !{postalt} samblaster --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
+		bwa mem !{ignorealt} -M -t!{bwa_threads} -R "@RG\\tID:!{file_tag}\\tSM:!{file_tag}\\t!{params.RG}" !{params.ref} !{pair[0]} !{pair[1]} | !{postalt} samblaster --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
 		'''
  	}else{
 		'''
         	set -o pipefail
-		AdapterRemoval --file1 !{pair[0]} --file2 !{pair[1]} --interleaved-output --output1 /dev/stdout | bwa mem !{ignorealt} -M -t!{bwa_threads} -R "@RG\\tID:!{file_tag}\\tSM:!{file_tag}\\t!{params.RG}" -p !{params.fasta_ref} - | !{postalt} samblaster --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
+		AdapterRemoval --file1 !{pair[0]} --file2 !{pair[1]} --interleaved-output --output1 /dev/stdout | bwa mem !{ignorealt} -M -t!{bwa_threads} -R "@RG\\tID:!{file_tag}\\tSM:!{file_tag}\\t!{params.RG}" -p !{params.ref} - | !{postalt} samblaster --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
 		'''
 	}
 	
@@ -220,7 +272,7 @@ if(params.indel_realignment != "false"){
             file("${file_tag_new}_target_intervals.list") into indel_realign_target_files
             set val(file_tag_new), file("${file_tag_new}.bam") into bam_files2
 	    file("${file_tag_new}.bam.bai") into bai_files2
-	    if(params.recalibration=="false") publishDir params.out_folder, mode: 'move'
+	    if(params.recalibration=="false") publishDir params.output_folder, mode: 'move'
 	    
             shell:
 	    file_tag_new=file_tag+'_indelrealigned'
@@ -228,8 +280,8 @@ if(params.indel_realignment != "false"){
 	    indelsvcf=`ls !{params.GATK_bundle}/*indels*.vcf* | grep -v ".tbi" | grep -v ".idx"`
 	    knowncom=''
 	    for ll in $indelsvcf; do knowncom=$knowncom' -known '$ll; done
-            java -Xmx!{params.mem}g -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T RealignerTargetCreator -nt !{params.cpu} -R !{params.fasta_ref} -I !{file_tag}.bam $knowncom -o !{file_tag_new}_target_intervals.list
-            java -Xmx!{params.mem}g -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T IndelRealigner -R !{params.fasta_ref} -I !{file_tag}.bam -targetIntervals !{file_tag_new}_target_intervals.list $knowncom -o !{file_tag_new}.bam
+            java -Xmx!{params.mem}g -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T RealignerTargetCreator -nt !{params.cpu} -R !{params.ref} -I !{file_tag}.bam $knowncom -o !{file_tag_new}_target_intervals.list
+            java -Xmx!{params.mem}g -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T IndelRealigner -R !{params.ref} -I !{file_tag}.bam -targetIntervals !{file_tag_new}_target_intervals.list $knowncom -o !{file_tag_new}.bam
 	    mv !{file_tag_new}.bai !{file_tag_new}.bam.bai
             '''
         }
@@ -270,7 +322,7 @@ if(params.recalibration!= "false"){
     file("${file_tag_new}_recalibration_plots.pdf") into recal_plots_files
     set val(file_tag_new), file("${file_tag_new}.bam") into recal_bam_files
     file("${file_tag_new}.bam.bai") into recal_bai_files
-    publishDir params.out_folder, mode: 'move'
+    publishDir params.output_folder, mode: 'move'
 
     shell:
     file_tag_new=file_tag+'_BQSrecalibrated'
@@ -281,10 +333,10 @@ if(params.recalibration!= "false"){
     knownSitescom=''
     for ll in $indelsvcf; do knownSitescom=$knownSitescom' -knownSites '$ll; done
     knownSitescom=$knownSitescom' -knownSites '$dbsnpvcf
-    java -Xmx!{params.mem}g -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T BaseRecalibrator -nct !{params.cpu} -R !{params.fasta_ref} -I !{file_tag}.bam $knownSitescom -L !{params.intervals} -o !{file_tag_new}_recal.table
-    java -Xmx!{params.mem}g -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T BaseRecalibrator -nct !{params.cpu} -R !{params.fasta_ref} -I !{file_tag}.bam $knownSitescom -BQSR !{file_tag_new}_recal.table -L !{params.intervals} -o !{file_tag_new}_post_recal.table		
-    java -Xmx!{params.mem}g -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T AnalyzeCovariates -R !{params.fasta_ref} -before !{file_tag_new}_recal.table -after !{file_tag_new}_post_recal.table -plots !{file_tag_new}_recalibration_plots.pdf	
-    java -Xmx!{params.mem}g -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T PrintReads -nct !{params.cpu} -R !{params.fasta_ref} -I !{file_tag}.bam -BQSR !{file_tag_new}_recal.table -L !{params.intervals} -o !{file_tag_new}.bam
+    java -Xmx!{params.mem}g -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T BaseRecalibrator -nct !{params.cpu} -R !{params.ref} -I !{file_tag}.bam $knownSitescom -L !{params.bed} -o !{file_tag_new}_recal.table
+    java -Xmx!{params.mem}g -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T BaseRecalibrator -nct !{params.cpu} -R !{params.ref} -I !{file_tag}.bam $knownSitescom -BQSR !{file_tag_new}_recal.table -L !{params.bed} -o !{file_tag_new}_post_recal.table		
+    java -Xmx!{params.mem}g -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T AnalyzeCovariates -R !{params.ref} -before !{file_tag_new}_recal.table -after !{file_tag_new}_post_recal.table -plots !{file_tag_new}_recalibration_plots.pdf	
+    java -Xmx!{params.mem}g -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T PrintReads -nct !{params.cpu} -R !{params.ref} -I !{file_tag}.bam -BQSR !{file_tag_new}_recal.table -L !{params.bed} -o !{file_tag_new}.bam
     mv !{file_tag_new}.bai !{file_tag_new}.bam.bai
     '''
     }

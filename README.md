@@ -111,8 +111,12 @@ nextflow run iarcbioinfo/alignment-nf --GATK_bundle GATKbundle/hg19 --input_fold
 ## Output 
   | Type      | Description     |
   |-----------|---------------|
-  | output1    | ...... |
-  | output2    | ...... |
+  | file.bam    | BAM files of alignments or realignments |
+  | file.bam.bai    | BAI files of alignments or realignments |
+  | file_target_intervals.list    | list of intervals used  |
+  | file_recal.table | table of scores before recalibration   |
+  | file_post_recal.table   | table of scores after recalibration |
+  | file_recalibration_plots.pdf   |  before/after recalibration plots   |
 
 ## Directed Acyclic Graph
 
@@ -122,6 +126,5 @@ nextflow run iarcbioinfo/alignment-nf --GATK_bundle GATKbundle/hg19 --input_fold
   | Name      | Email | Description     |
   |-----------|---------------|-----------------| 
   | Nicolas Alcala*    | AlcalaN@fellows.iarc.fr    | Developer to contact for support |
-  | Catherine Voegele    |            xx | Developer |
-  | contrib3    |            xx | Tester |
+  | Catherine Voegele    |     VoegeleC@iarc.fr | Developer |
   
