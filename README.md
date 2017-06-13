@@ -1,47 +1,92 @@
 # alignment-nf
 
+## Nextflow pipeline for BAM realignment or fastq alignment
+
+![Workflow representation](WESpipeline.png?raw=true "Scheme of alignment/realignment Workflow")
+
+## Description
+
 Nextflow pipeline to perform BAM realignment or fastq alignment, with/without local indel realignment and base quality score recalibration.
 
-## Overview of pipeline workflow
+## Dependencies
 
-![workflow](WESpipeline.png?raw=true "Scheme of alignment/realignment Workflow")
+1. Nextflow : for commom installation procedures see the [IARC-nf](https://github.com/IARCbioinfo/IARC-nf) repository.
 
-## Prerequisites
-For the **basic fastq files alignment** without indel realignment, base quality score recalibration, nor alternative contif handling, the script requires the following programs:
-- [*nextflow*](http://www.nextflow.io/). Install with
-	```bash
-	curl -fsSL get.nextflow.io | bash
-	```
-	And move it to a location in your `$PATH` (e.g., `/usr/local/bin`):
-	```bash
-	sudo mv nextflow /usr/local/bin
-	```
-- [*bwa*](https://github.com/lh3/bwa)
-- [*samblaster*](https://github.com/GregoryFaust/samblaster)
-- [*sambamba*](https://github.com/lomereiter/sambamba)
-and the following files:
-- a fasta reference genome with its index files (*.fai*, *.sa*, *.bwt*, *.ann*, *.amb*, *.pac*; in the same directory)
-- a folder with fastq files
+### Basic fastq alignment
+2. [*bwa*](https://github.com/lh3/bwa)
+3. [*samblaster*](https://github.com/GregoryFaust/samblaster)
+4. [*sambamba*](https://github.com/lomereiter/sambamba)
 
-In addition, for the **bam files realignment**:
-- [*samtools*](http://samtools.sourceforge.net/)
-- a folder with bam files
+### BAM files realignment
+5. [*samtools*](http://samtools.sourceforge.net/)
 
-For the **adapter sequence trimming**:
-- [*AdapterRemoval*](https://github.com/MikkelSchubert/adapterremoval)
+### adapter sequence trimming
+6. [*AdapterRemoval*](https://github.com/MikkelSchubert/adapterremoval)
 
-For the **ALT contigs handling**, additional softwares and scripts are required:
-- the *k8* javascript execution shell (e.g., available in the [*bwakit*](https://sourceforge.net/projects/bio-bwa/files/bwakit/) archive)
-- javascript bwa-postalt.js and the additional fasta reference *.alt* file from [*bwakit*](https://github.com/lh3/bwa/tree/master/bwakit) must be in the same directory as the reference genome file.
+### ALT contigs handling
+7. the *k8* javascript execution shell (e.g., available in the [*bwakit*](https://sourceforge.net/projects/bio-bwa/files/bwakit/) archive)
+8. javascript bwa-postalt.js and the additional fasta reference *.alt* file from [*bwakit*](https://github.com/lh3/bwa/tree/master/bwakit) must be in the same directory as the reference genome file.
 
-For the **indel realignment**:
-- GATK [*GenomeAnalysisTK.jar*](https://software.broadinstitute.org/gatk/guide/quickstart)
-- [GATK bundle](https://software.broadinstitute.org/gatk/download/bundle) VCF files with lists of indels (recommended: 1000 genomes and Mills gold standard VCFs)
+### Indel realignment
+9. GATK [*GenomeAnalysisTK.jar*](https://software.broadinstitute.org/gatk/guide/quickstart)
+10. [GATK bundle](https://software.broadinstitute.org/gatk/download/bundle) VCF files with lists of indels (recommended: 1000 genomes and Mills gold standard VCFs)
 
-For the **base quality score recalibration**:
-- GATK [*GenomeAnalysisTK.jar*](https://software.broadinstitute.org/gatk/guide/quickstart)
-- [GATK bundle](https://software.broadinstitute.org/gatk/download/bundle) VCF files with lists of indels and SNVs (recommended: 1000 genomes indels, Mills gold standard indels VCFs, dbsnp VCF)
-- bed file with intervals to be considered
+### Base quality score recalibration
+11. GATK [*GenomeAnalysisTK.jar*](https://software.broadinstitute.org/gatk/guide/quickstart)
+12. [GATK bundle](https://software.broadinstitute.org/gatk/download/bundle) VCF files with lists of indels and SNVs (recommended: 1000 genomes indels, Mills gold standard indels VCFs, dbsnp VCF)
+
+To avoid installing the previous tools, install Docker. Docker installation is described in the [IARC-nf](https://github.com/IARCbioinfo/IARC-nf) repository.
+
+## Input 
+ | Type      | Description     |
+  |-----------|---------------|
+  | --input_folder    | a folder with fastq files or bam files |
+
+## Parameters
+
+* #### Mandatory
+
+| Name | Example value | Description |
+|-----------|--------------|-------------| 
+|--fasta_ref    | hg19.fasta | genome reference  with its index files (*.fai*, *.sa*, *.bwt*, *.ann*, *.amb*, *.pac*; in the same directory) |
+|--out_folder   | . | output folder for aligned BAMs|
+|--intervals    | | bed file with interval list|
+|--GATK_bundle  | bundle | path to GATK bundle files|
+|--GATK_folder  | . | path to GATK *GenomeAnalysisTK.jar* file |
+
+* #### Optional
+
+| Name | Default value | Description |
+|-----------|--------------|-------------| 
+|--cpu          | 8 | number of CPUs |
+|--mem         | 32 | memory|
+|--mem\_sambamba | 1 | memory for software *sambamba*|
+|--RG           | PL:ILLUMINA | sequencing information for aligned (for *bwa*)|
+|--fastq_ext    | fastq.gz | extension of fastq files|
+|--suffix1      | \_1 | suffix for second element of read files pair|
+|--suffix2      | \_2 | suffix for second element of read files pair|
+|--intervals    | | bed file with interval list|
+|--GATK_bundle  | bundle | path to GATK bundle files|
+|--GATK_folder  | . | path to GATK *GenomeAnalysisTK.jar* file |
+|--trim*         | false | enable adapter sequence trimming|
+|--indel_realignment | false | perform local indel realignment (GATK)|
+|--recalibration | false | perform quality score recalibration (GATK)|
+|--js           | k8 | path to javascript interpreter *k8*|
+|--postaltjs    | bwa-postalt.js" | path to postalignment javascript *bwa-postalt.js*|
+|--alt          | false | enable alternative contig handling (for reference genome hg38)|
+
+
+* #### Flags
+
+Flags are special parameters without value.
+
+| Name  | Description |
+|-----------|-------------| 
+| --help | print usage and optional parameters |
+|--trim     | enable adapter sequence trimming|
+|--indel_realignment  | perform local indel realignment (GATK)|
+|--recalibration  | perform quality score recalibration (GATK)|
+|--alt         | enable alternative contig handling (for reference genome hg38)|
 
 ## Usage
 ```bash
@@ -70,26 +115,20 @@ To use the base quality score recalibration step, you must provide the **path to
 nextflow run iarcbioinfo/alignment-nf --GATK_bundle GATKbundle/hg19 --input_folder input --fasta_ref reference/hg19.fa --GATK_folder /user/bin7GATK-3.6-0 --intervals reference/hg19_intervals.bed --out_folder output --recalibration
 ```
 
-## All parameters
-| **PARAMETER** | **DEFAULT** | **DESCRIPTION** |
-|-----------|--------------:|-------------| 
-| *--help* | null | print usage and optional parameters |
-*--input_folder* | . | input folder |
-*--fasta_ref*    | hg19.fasta | genome reference |
-*--cpu*          | 8 | number of CPUs |
-*--mem*         | 32 | memory|
-*--mem\_sambamba* | 1 | memory for software *sambamba*|
-*--RG*           | PL:ILLUMINA | sequencing information for aligned (for *bwa*)|
-*--fastq_ext*    | fastq.gz | extension of fastq files|
-*--suffix1*      | \_1 | suffix for second element of read files pair|
-*--suffix2*      | \_2 | suffix for second element of read files pair|
-*--out_folder*   | . | output folder for aligned BAMs|
-*--intervals*    | | bed file with interval list|
-*--GATK_bundle*  | bundle | path to GATK bundle files|
-*--GATK_folder*  | . | path to GATK *GenomeAnalysisTK.jar* file |
-*--trim*         | false | enable adapter sequence trimming|
-*--indel_realignment* | false | perform local indel realignment (GATK)|
-*--recalibration* | false | perform quality score recalibration (GATK)|
-*--js*           | k8 | path to javascript interpreter *k8*|
-*--postaltjs*    | bwa-postalt.js" | path to postalignment javascript *bwa-postalt.js*|
-*--alt*          | false | enable alternative contig handling (for reference genome hg38)|
+## Output 
+  | Type      | Description     |
+  |-----------|---------------|
+  | output1    | ...... |
+  | output2    | ...... |
+
+## Directed Acyclic Graph
+
+
+## Contributions
+
+  | Name      | Email | Description     |
+  |-----------|---------------|-----------------| 
+  | Nicolas Alcala*    | AlcalaN@fellows.iarc.fr    | Developer to contact for support |
+  | Catherine Voegele    |            xx | Developer |
+  | contrib3    |            xx | Tester |
+  
