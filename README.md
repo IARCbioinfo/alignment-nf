@@ -10,7 +10,7 @@ Nextflow pipeline to perform BAM realignment or fastq alignment, with/without lo
 
 ## Dependencies
 
-1. Nextflow : for commom installation procedures see the [IARC-nf](https://github.com/IARCbioinfo/IARC-nf) repository.
+1. Nextflow : for common installation procedures see the [IARC-nf](https://github.com/IARCbioinfo/IARC-nf) repository.
 
 ### Basic fastq alignment
 2. [*bwa*](https://github.com/lh3/bwa)
