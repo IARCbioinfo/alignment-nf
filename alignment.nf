@@ -150,22 +150,22 @@ if(mode=='bam'){
         output:
 	set val(file_tag_new), file("${file_tag_new}.bam") into bam_files
 	file("${file_tag_new}.bam.bai") into bai_files
-	if( (params.recalibration=="false")&(params.indel_realignment=="false") ) publishDir params.output_folder, mode: 'move'
+	if( (params.recalibration==null)&(params.indel_realignment==null) ) publishDir params.output_folder, mode: 'move'
 
         shell:
 	file_tag = infile.baseName
 	file_tag_new=file_tag+'_realigned'
-	if(params.trim!="false") file_tag_new=file_tag_new+'_trimmed'
-	if(params.alt!="false")  file_tag_new=file_tag_new+'_alt'
+	if(params.trim) file_tag_new=file_tag_new+'_trimmed'
+	if(params.alt)  file_tag_new=file_tag_new+'_alt'
 	
-	if(params.alt=="false"){
+	if(params.alt==null){
 	  ignorealt='-j'
 	  postalt=''
 	}else{
 	  ignorealt=''
 	  postalt=params.js+' '+params.postaltjs+' '+params.ref+'.alt |'
 	}
-	if(params.trim=="false"){
+	if(params.trim==null){
 	  preproc=''
 	}else{
 	  	
@@ -227,14 +227,14 @@ if(mode=='fastq'){
         output:
 	set val(file_tag_new), file("${file_tag_new}.bam") into bam_files
 	file("${file_tag_new}.bam.bai") into bai_files
-	if( (params.recalibration=="false")&(params.indel_realignment=="false") ) publishDir params.output_folder, mode: 'move'
+	if( (params.recalibration==null)&(params.indel_realignment==null) ) publishDir params.output_folder, mode: 'move'
 
         shell:
         file_tag = pair[0].name.replace("${params.suffix1}.${params.fastq_ext}","")
 	file_tag_new=file_tag
-	if(params.trim!="false") file_tag_new=file_tag_new+'_trimmed'
-	if(params.alt!="false")  file_tag_new=file_tag_new+'_alt'
-	if(params.alt=="false"){
+	if(params.trim) file_tag_new=file_tag_new+'_trimmed'
+	if(params.alt)  file_tag_new=file_tag_new+'_alt'
+	if(params.alt==null){
 	  ignorealt='-j'
 	  postalt=''
 	}else{
@@ -244,7 +244,7 @@ if(mode=='fastq'){
 	bwa_threads  = params.cpu.intdiv(2) - 1
 	sort_threads = params.cpu.intdiv(2) - 1
 	sort_mem     = params.mem.intdiv(4)
-	if(params.trim=="false"){
+	if(params.trim==null){
 		'''
         	set -o pipefail
 		bwa mem !{ignorealt} -M -t!{bwa_threads} -R "@RG\\tID:!{file_tag}\\tSM:!{file_tag}\\t!{params.RG}" !{params.ref} !{pair[0]} !{pair[1]} | !{postalt} samblaster --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
@@ -259,7 +259,7 @@ if(mode=='fastq'){
      }
 }
 
-if(params.indel_realignment != "false"){
+if(params.indel_realignment){
         // Local realignment around indels
         process indel_realignment {
             cpus params.cpu
@@ -272,7 +272,7 @@ if(params.indel_realignment != "false"){
             file("${file_tag_new}_target_intervals.list") into indel_realign_target_files
             set val(file_tag_new), file("${file_tag_new}.bam") into bam_files2
 	    file("${file_tag_new}.bam.bai") into bai_files2
-	    if(params.recalibration=="false") publishDir params.output_folder, mode: 'move'
+	    if(params.recalibration==null) publishDir params.output_folder, mode: 'move'
 	    
             shell:
 	    file_tag_new=file_tag+'_indelrealigned'
@@ -286,27 +286,13 @@ if(params.indel_realignment != "false"){
             '''
         }
 }else{
-    if(params.recalibration!= "false"){
-    process no_indel_realignment {
-        cpus '1'
-        memory '100M'
-        tag { file_tag }
-        
-        input:
-        set val(file_tag), file("${file_tag}.bam") from bam_files
-	file("${file_tag}.bam.bai") from bai_files
-        output:
-        set val(file_tag), file("${file_tag}.bam") into bam_files2
-	file("${file_tag}.bam.bai") into bai_files2
-	shell:
-	'''
-        touch !{file_tag}.bam
-	'''
-    }
+    if(params.recalibration){
+        bam_files2 = bam_files
+	bai_files2 = bai_files
     }
 }
 
-if(params.recalibration!= "false"){
+if(params.recalibration){
 // base quality score recalibration
    process base_quality_score_recalibration {
     cpus params.cpu
