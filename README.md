@@ -20,7 +20,7 @@ Nextflow pipeline to perform BAM realignment or fastq alignment, with/without lo
 ### BAM files realignment
 5. [*samtools*](http://samtools.sourceforge.net/)
 
-### adapter sequence trimming
+### Adapter sequence trimming
 6. [*AdapterRemoval*](https://github.com/MikkelSchubert/adapterremoval)
 
 ### ALT contigs handling
@@ -48,11 +48,8 @@ To avoid installing the previous tools, install Docker. Docker installation is d
 
 | Name | Example value | Description |
 |-----------|--------------|-------------| 
-|--fasta_ref    | hg19.fasta | genome reference  with its index files (*.fai*, *.sa*, *.bwt*, *.ann*, *.amb*, *.pac*; in the same directory) |
-|--out_folder   | . | output folder for aligned BAMs|
-|--intervals    | | bed file with interval list|
-|--GATK_bundle  | bundle | path to GATK bundle files|
-|--GATK_folder  | . | path to GATK *GenomeAnalysisTK.jar* file |
+|--ref    | hg19.fasta | genome reference  with its index files (*.fai*, *.sa*, *.bwt*, *.ann*, *.amb*, *.pac*; in the same directory) |
+|--output_folder   | . | Output folder for aligned BAMs|
 
 * #### Optional
 
@@ -65,15 +62,11 @@ To avoid installing the previous tools, install Docker. Docker installation is d
 |--fastq_ext    | fastq.gz | extension of fastq files|
 |--suffix1      | \_1 | suffix for second element of read files pair|
 |--suffix2      | \_2 | suffix for second element of read files pair|
-|--intervals    | | bed file with interval list|
+|--bed    | | bed file with interval list|
 |--GATK_bundle  | bundle | path to GATK bundle files|
 |--GATK_folder  | . | path to GATK *GenomeAnalysisTK.jar* file |
-|--trim*         | false | enable adapter sequence trimming|
-|--indel_realignment | false | perform local indel realignment (GATK)|
-|--recalibration | false | perform quality score recalibration (GATK)|
 |--js           | k8 | path to javascript interpreter *k8*|
 |--postaltjs    | bwa-postalt.js" | path to postalignment javascript *bwa-postalt.js*|
-|--alt          | false | enable alternative contig handling (for reference genome hg38)|
 
 
 * #### Flags
