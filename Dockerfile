@@ -30,7 +30,7 @@ RUN apt-get clean && \
   # Install bwa specific version manually
   wget https://github.com/lh3/bwa/releases/download/v0.7.15/bwakit-0.7.15_x64-linux.tar.bz2 && \
   tar -jxf bwa.kit-0.7.15_x64-linux.tar.bz2 && \
-  cp bwa.kit/* /usr/local/bin/.
+  cp bwa.kit/* /usr/local/bin/. && \
   rm -rf bwakit-0.7.15_x64-linux.tar.bz2 bwa.kit && \
 
   # Install samblaster specific version manually
