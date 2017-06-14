@@ -44,6 +44,7 @@ RUN mkdir -p /var/cache/apt/archives/partial && \
   tar -xzf samblaster-v.0.1.24.tar.gz && \
   cd samblaster-v.0.1.24 && \
   make && \
+  mv samblaster /usr/local/bin/ && \
   rm -rf samblaster-v.0.1.24.tar.gz samblaster-v.0.1.24 && \
 
   # Install sambamba specific version manually
