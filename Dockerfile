@@ -44,13 +44,13 @@ RUN mkdir -p /var/cache/apt/archives/partial && \
   tar -xzf samblaster-v.0.1.24.tar.gz && \
   cd samblaster-v.0.1.24 && \
   make && \
-  mv samblaster /usr/local/bin/ && \
+  cp samblaster /usr/local/bin/. && \
   rm -rf samblaster-v.0.1.24.tar.gz samblaster-v.0.1.24 && \
 
   # Install sambamba specific version manually
   wget https://github.com/lomereiter/sambamba/releases/download/v0.6.6/sambamba_v0.6.6_linux.tar.bz2 && \
   tar -jxf sambamba_v0.6.6_linux.tar.bz2 && \
-  mv sambamba_v0.6.6 /usr/local/bin/sambamba && \
+  cp sambamba_v0.6.6 /usr/local/bin/sambamba && \
   rm -rf sambamba_v0.6.6_linux.tar.bz2 && \
 
   # Remove unnecessary dependences
