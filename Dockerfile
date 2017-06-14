@@ -20,7 +20,6 @@ RUN mkdir -p /var/cache/apt/archives/partial && \
   git \
   wget \
   ca-certificates \
-  Graphviz \
   bzip2 && \
 
   # Install samtools specific version manually
