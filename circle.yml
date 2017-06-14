@@ -13,7 +13,6 @@ test:
       nextflow run ~/alignment-nf/alignment.nf --help
     - | #run simple test with docker
       cd ~/data_test/ && nextflow run ~/alignment-nf/alignment.nf -with-docker iarcbioinfo/alignment-nf --input_folder BAM/ --ref ~/data_test/REF/17.fasta --cpu 4 --mem 4 -with-dag dag.png
-    - | #run simple test with docker
       cd ~/data_test/ && nextflow run ~/alignment-nf/alignment.nf -with-docker iarcbioinfo/alignment-nf --input_folder BAM/ --ref ~/data_test/REF/17.fasta --cpu 4 --mem 4 -with-dag dag.html
       cp dag.html dag.png ~/alignment-nf/
 deployment:
