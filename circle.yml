@@ -3,15 +3,18 @@ machine:
     - docker
   post:
     - wget -qO- get.nextflow.io | bash ; chmod 755 nextflow ; sudo ln -s ~/nextflow /usr/local/bin/
+    - git clone --depth=1 https://github.com/iarcbioinfo/data_test.git
 test:
   override:
     - |
       cd ~/alignment-nf
       docker build -t iarcbioinfo/alignment-nf .
-    - | #use bed TP53_all.bed
-      nextflow run ~/alignment-nf/alignment.nf -r dev --help
-    - | #use bed TP53_all.bed
-      nextflow run ~/alignment-nf/alignment.nf -r dev -with-docker iarcbioinfo/alignment-nf --help
+    - | #run help
+      nextflow run ~/alignment-nf/alignment.nf --help
+    - | #run help with docker
+      nextflow run ~/alignment-nf/alignment.nf -with-docker iarcbioinfo/alignment-nf --help
+    - | #run simple test with docker
+      nextflow run ~/alignment-nf/alignment.nf -with-docker iarcbioinfo/alignment-nf --input_folder data_test/BAM/ --ref ~/data_test/17.fasta.gz --cpu 2 --mem 1
 deployment:
   git:
     branch: [master, dev]
