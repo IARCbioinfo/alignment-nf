@@ -86,7 +86,7 @@ if (params.help) {
     log.info '--recalibration                    performs base quality score recalibration (GATK)'
     log.info '--alt                    enable alternative contig handling (for reference genome hg38)'
     log.info ''
-    exit 1
+    exit 0
 }else {
   /* Software information */
   log.info "input_folder=${params.input_folder}"

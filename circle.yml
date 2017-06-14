@@ -14,7 +14,7 @@ test:
     - | #run help with docker
       nextflow run ~/alignment-nf/alignment.nf -with-docker iarcbioinfo/alignment-nf --help
     - | #run simple test with docker
-      nextflow run ~/alignment-nf/alignment.nf -with-docker iarcbioinfo/alignment-nf --input_folder data_test/BAM/ --ref ~/data_test/17.fasta.gz --cpu 2 --mem 1
+      cd ~/data_test/ && nextflow run ~/alignment-nf/alignment.nf -with-docker iarcbioinfo/alignment-nf --input_folder BAM/ --ref ~/REF/17.fasta.gz --cpu 1 --mem 1
 deployment:
   git:
     branch: [master, dev]
