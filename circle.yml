@@ -9,9 +9,9 @@ test:
       cd ~/alignment-nf
       docker build -t iarcbioinfo/alignment-nf .
     - | #use bed TP53_all.bed
-      nextflow run ~/alignment-nf/alignment.nf --help
+      nextflow run ~/alignment-nf/alignment.nf -r dev --help
     - | #use bed TP53_all.bed
-      nextflow run ~/alignment-nf/alignment.nf -with-docker iarcbioinfo/alignment-nf --help
+      nextflow run ~/alignment-nf/alignment.nf -r dev -with-docker iarcbioinfo/alignment-nf --help
 deployment:
   git:
     branch: [master, dev]
