@@ -1,0 +1,151 @@
+<!--
+  ~ Copyright (c) 2013-2017, Centre for Genomic Regulation (CRG).
+  ~ Copyright (c) 2013-2017, Paolo Di Tommaso and the respective authors.
+  ~
+  ~   This file is part of 'Nextflow'.
+  ~
+  ~   Nextflow is free software: you can redistribute it and/or modify
+  ~   it under the terms of the GNU General Public License as published by
+  ~   the Free Software Foundation, either version 3 of the License, or
+  ~   (at your option) any later version.
+  ~
+  ~   Nextflow is distributed in the hope that it will be useful,
+  ~   but WITHOUT ANY WARRANTY; without even the implied warranty of
+  ~   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  ~   GNU General Public License for more details.
+  ~
+  ~   You should have received a copy of the GNU General Public License
+  ~   along with Nextflow.  If not, see <http://www.gnu.org/licenses/>.
+  -->
+
+<html>
+
+    <head>
+        <title>Nextflow Cytoscape.js with Dagre</title>
+
+        <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1, maximum-scale=1">
+
+        <script type="text/javascript">
+        var prot = (("https:" == document.location.protocol) ? "https://" : "http://");
+        document.write(unescape("%3Cscript src='" + prot + "code.jquery.com/jquery-2.0.3.min.js' type='text/javascript' %3E%3C/script%3E"));
+        document.write(unescape("%3Cscript src='" + prot + "cdnjs.cloudflare.com/ajax/libs/cytoscape/2.6.12/cytoscape.min.js' type='text/javascript' %3E%3C/script%3E"));
+        document.write(unescape("%3Cscript src='" + prot + "cdn.rawgit.com/cpettitt/dagre/v0.7.4/dist/dagre.min.js' type='text/javascript' %3E%3C/script%3E"));
+        document.write(unescape("%3Cscript src='" + prot + "cdn.rawgit.com/cytoscape/cytoscape.js-dagre/1.1.2/cytoscape-dagre.js' type='text/javascript' %3E%3C/script%3E"));
+        </script>
+
+        <style>
+            body {
+                font-family: helvetica;
+                font-size: 14px;
+            }
+
+            #cy {
+                width: 100%;
+                height: 100%;
+                position: absolute;
+                left: 0;
+                top: 0;
+                z-index: 999;
+            }
+
+            h1 {
+                opacity: 0.5;
+                font-size: 1em;
+            }
+        </style>
+
+        <script>
+            $(function(){
+                var cy = window.cy = cytoscape({
+                    container: document.getElementById('cy'),
+                    boxSelectionEnabled: false,
+                    autounselectify: true,
+
+                    layout: {
+                        name: 'dagre'
+                    },
+
+                    style: cytoscape.stylesheet()
+                        .selector( 'node')
+                            .css({
+                                'width': 10,
+                                'height': 10,
+                                'content': 'data(label)',
+                                'text-valign': 'center',
+                                'text-halign': 'center',
+                                'text-opacity': 0.5,
+                            })
+                        .selector('node.PROCESS')
+                            .css({
+                                'width': 100,
+                                'height': 50,
+                                'text-opacity': 0.9,
+                                'background-color': '#009911'
+                            })
+                        .selector('node.OPERATOR')
+                            .css({
+                                'background-color': '#11479e',
+                                'text-halign': 'right',
+                            })
+                        .selector('node.ORIGIN')
+                            .css({
+                                'background-color': '#999999',
+                                'text-halign': 'right',
+                            })
+                        .selector('node.TERMINATION')
+                            .css({
+                                'background-color': '#999999',
+                                'text-halign': 'right',
+                            })
+                        .selector('edge')
+                            .css({
+                                'content': 'data(label)',
+                                'text-opacity': 0.5,
+                                'width': 4,
+                                'target-arrow-shape': 'triangle',
+                                'line-color': '#9dbaea',
+                                'target-arrow-color': '#9dbaea'
+                            }),
+
+elements: {
+nodes: [
+{ data: { id: 'p0', label: 'Channel.fromPath'}, classes: 'ORIGIN' },
+{ data: { id: 'p1'}, classes: 'ORIGIN' },
+{ data: { id: 'p2'}, classes: 'ORIGIN' },
+{ data: { id: 'p3'}, classes: 'ORIGIN' },
+{ data: { id: 'p4'}, classes: 'ORIGIN' },
+{ data: { id: 'p5'}, classes: 'ORIGIN' },
+{ data: { id: 'p6'}, classes: 'ORIGIN' },
+{ data: { id: 'p7'}, classes: 'ORIGIN' },
+{ data: { id: 'p8'}, classes: 'ORIGIN' },
+{ data: { id: 'p9', label: 'bam_realignment'}, classes: 'PROCESS' },
+{ data: { id: 'p10'}, classes: 'NODE' },
+{ data: { id: 'p11'}, classes: 'NODE' },
+],
+edges: [
+{ data: { source: 'p0', target: 'p9', label: 'files' } },
+{ data: { source: 'p1', target: 'p9', label: 'ref' } },
+{ data: { source: 'p2', target: 'p9', label: 'ref_fai' } },
+{ data: { source: 'p3', target: 'p9', label: 'ref_sa' } },
+{ data: { source: 'p4', target: 'p9', label: 'ref_bwt' } },
+{ data: { source: 'p5', target: 'p9', label: 'ref_ann' } },
+{ data: { source: 'p6', target: 'p9', label: 'ref_amb' } },
+{ data: { source: 'p7', target: 'p9', label: 'ref_pac' } },
+{ data: { source: 'p8', target: 'p9', label: 'ref_alt' } },
+{ data: { source: 'p9', target: 'p11', label: 'bam_files' } },
+{ data: { source: 'p9', target: 'p10', label: 'bai_files' } },
+],
+},
+
+                });
+
+            });
+        </script>
+    </head>
+
+    <body>
+        <h1>Nextflow Cytoscape.js with Dagre</h1>
+        <div id="cy"></div>
+    </body>
+
+</html>
