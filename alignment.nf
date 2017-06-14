@@ -38,7 +38,6 @@ params.alt          = null
 params.trim         = null
 
 
-
 log.info ""
 log.info "--------------------------------------------------------"
 log.info "  alignment-nf 1.0.0: alignment/realignment workflow for whole exome/whole genome sequencing "
