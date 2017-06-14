@@ -120,6 +120,7 @@ nextflow run iarcbioinfo/alignment-nf --GATK_bundle GATKbundle/hg19 --input_fold
 
 ## Directed Acyclic Graph
 
+![DAG](dag.png?raw=true "DAG of alignment/realignment Workflow")
 
 ## Contributions
 
