@@ -120,6 +120,7 @@ nextflow run iarcbioinfo/alignment-nf --GATK_bundle GATKbundle/hg19 --input_fold
 
 ## Directed Acyclic Graph
 
+![DAG](dag.png?raw=true "DAG of alignment/realignment Workflow")
 
 ## Contributions
 
@@ -127,4 +128,6 @@ nextflow run iarcbioinfo/alignment-nf --GATK_bundle GATKbundle/hg19 --input_fold
   |-----------|---------------|-----------------| 
   | Nicolas Alcala*    | AlcalaN@fellows.iarc.fr    | Developer to contact for support |
   | Catherine Voegele    |     VoegeleC@iarc.fr | Developer |
+  | Vincent Cahais | CahaisV@iarc.fr | Tester |
+  | Alexis Robitaille | RobitailleA@students.iarc.fr | Tester |
   
