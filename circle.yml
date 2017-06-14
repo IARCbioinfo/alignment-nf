@@ -1,0 +1,19 @@
+machine:
+  services:
+    - docker
+  post:
+    - wget -qO- get.nextflow.io | bash ; chmod 755 nextflow ; sudo ln -s ~/nextflow /usr/local/bin/
+test:
+  override:
+    - |
+      cd ~/alignment-nf
+      docker build -t iarcbioinfo/alignment-nf .
+    - | #use bed TP53_all.bed
+      nextflow run ~/alignment-nf/alignment.nf --help
+    - | #use bed TP53_all.bed
+      nextflow run ~/alignment-nf/alignment.nf -with-docker iarcbioinfo/alignment-nf --help
+deployment:
+  git:
+    branch: [master, dev]
+    commands:
+      - chmod +x deploy.sh && ./deploy.sh
