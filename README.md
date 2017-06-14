@@ -119,8 +119,7 @@ nextflow run iarcbioinfo/alignment-nf --GATK_bundle GATKbundle/hg19 --input_fold
   | file_recalibration_plots.pdf   |  before/after recalibration plots   |
 
 ## Directed Acyclic Graph
-
-![DAG](dag.png?raw=true "DAG of alignment/realignment Workflow")
+[![DAG](dag.png)](http://htmlpreview.github.io/?https://github.com/IARCbioinfo/alignment-nf/blob/dev/dag.html)
 
 ## Contributions
 
