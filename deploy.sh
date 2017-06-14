@@ -1,5 +1,6 @@
 #!/bin/bash
 cd ~/alignment-nf/
+git config --global user.email "alcalan@fellows.iarc.fr"
 git add dag.png
 git add dag.html
 git commit -m "Generated DAG [skip ci]"
