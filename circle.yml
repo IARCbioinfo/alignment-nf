@@ -1,0 +1,22 @@
+machine:
+  services:
+    - docker
+  post:
+    - wget -qO- get.nextflow.io | bash ; chmod 755 nextflow ; sudo ln -s ~/nextflow /usr/local/bin/ ; sudo apt-get install graphviz
+    - git clone --depth=1 https://github.com/iarcbioinfo/data_test.git
+test:
+  override:
+    - |
+      cd ~/alignment-nf
+      docker build -t iarcbioinfo/alignment-nf .
+    - | #run help
+      nextflow run ~/alignment-nf/alignment.nf --help
+    - | #run simple test with docker
+      cd ~/data_test/ && nextflow run ~/alignment-nf/alignment.nf -with-docker iarcbioinfo/alignment-nf --input_folder BAM/ --ref ~/data_test/REF/17.fasta --cpu 4 --mem 4 -with-dag dag.png
+      cd ~/data_test/ && nextflow run ~/alignment-nf/alignment.nf -with-docker iarcbioinfo/alignment-nf --input_folder BAM/ --ref ~/data_test/REF/17.fasta --cpu 4 --mem 4 -with-dag dag.html
+      cp dag.html dag.png ~/alignment-nf/
+deployment:
+  git:
+    branch: [master, dev]
+    commands:
+      - chmod +x deploy.sh && ./deploy.sh
