@@ -72,7 +72,6 @@ if (params.help) {
     log.info '    --fastq_ext      STRING                Extension of fastq files (default : fastq.gz)'
     log.info '    --suffix1        STRING                Suffix of fastq files 1 (default : _1)'
     log.info '    --suffix2        STRING                Suffix of fastq files 2 (default : _2)'
-
     log.info '    --bed        STRING                bed file with interval list'
     log.info '    --GATK_bundle        STRING                path to GATK bundle files (default : .)'
     log.info '    --GATK_folder        STRING                path to GATK GenomeAnalysisTK.jar file (default : .)'
