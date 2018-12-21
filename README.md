@@ -1,6 +1,11 @@
 # alignment-nf
 
 ## Nextflow pipeline for BAM realignment or fastq alignment
+[![CircleCI](https://circleci.com/gh/IARCbioinfo/alignment-nf.svg?style=svg)](https://circleci.com/gh/IARCbioinfo/alignment-nf)
+[![Docker Hub](https://img.shields.io/badge/docker-ready-blue.svg)](https://hub.docker.com/r/iarcbioinfo/alignment-nf/)
+[![https://www.singularity-hub.org/static/img/hosted-singularity--hub-%23e32929.svg](https://www.singularity-hub.org/static/img/hosted-singularity--hub-%23e32929.svg)](https://singularity-hub.org/collections/1404)
+[![DOI](https://zenodo.org/badge/.svg)](https://zenodo.org/badge/latestdoi/)
+
 
 ![Workflow representation](WESpipeline.png?raw=true "Scheme of alignment/realignment Workflow")
 
