@@ -1,0 +1,18 @@
+version: 2
+
+jobs:
+        build:
+                machine: true
+                steps:
+                    - checkout
+                    - run: - wget -qO- get.nextflow.io | bash ; chmod 755 nextflow ; sudo ln -s ~/project/nextflow /usr/local/bin/ ; sudo apt-get install graphviz
+                    - run: cd ~ && git clone --depth=1 https://github.com/iarcbioinfo/data_test.git
+                    - run: echo " docker.runOptions = '-u $(id -u):$(id -g)' " > ~/.nextflow/config
+                    - run: cd ~/project/ ; docker build -t iarcbioinfo/alignment-nf .
+                    - run: cd ; nextflow run ~/project/alignment-nf/alignment.nf --help
+                    - run: cd ; nextflow run ~/project/alignment-nf/alignment.nf -with-docker iarcbioinfo/alignment-nf --input_folder ~/data_test/BAM/ --ref ~/data_test/REF/17.fasta --output_folder ~/results/ --cpu 4 --mem 4 -with-dag dag.png 
+                    - run: cd ; nextflow run ~/project/alignment-nf/alignment.nf -with-docker iarcbioinfo/alignment-nf --input_folder ~/data_test/BAM/ --ref ~/data_test/REF/17.fasta --output_folder ~/results/ --cpu 4 --mem 4 -with-dag dag.html
+                    - run: cd ; cp ~/results/nf-pipeline_info/dag.* ~/project/
+                    - deploy:
+                            branch: [master, dev]
+                            command: chmod +x deploy.sh && ./deploy.sh
