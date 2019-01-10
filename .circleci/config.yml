@@ -4,6 +4,8 @@ jobs:
         build:
                 machine: true
                 steps:
+                    - run: ssh git@github.com
+                    - run : ssh -v git@github.com
                     - checkout
                     - run: wget -qO- get.nextflow.io | bash ; chmod 755 nextflow ; sudo ln -s ~/project/nextflow /usr/local/bin/ ; sudo apt-get install graphviz
                     - run: cd ~ && git clone --depth=1 https://github.com/iarcbioinfo/data_test.git
