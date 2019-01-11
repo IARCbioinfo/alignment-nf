@@ -18,18 +18,16 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 params.input_folder = '.'
+params.input_file   = null
 params.ref          = 'hg19.fasta'
 params.cpu          = 8
 params.mem          = 32
 params.RG           = "PL:ILLUMINA"
 params.fastq_ext    = "fastq.gz"
-params.suffix1      = "_1"
-params.suffix2      = "_2"
 params.output_folder = "."
 params.bed          = ""
 params.GATK_bundle  = "bundle"
 params.GATK_folder  = "."
-params.js           = "k8"
 params.postaltjs    = "bwa-postalt.js"
 params.indel_realignment = null
 params.recalibration = null
@@ -40,7 +38,7 @@ params.trim         = null
 
 log.info ""
 log.info "--------------------------------------------------------"
-log.info "  alignment-nf 1.0.0: alignment/realignment workflow for whole exome/whole genome sequencing "
+log.info "  alignment-nf 2.0.0: alignment/realignment workflow for whole exome/whole genome sequencing "
 log.info "--------------------------------------------------------"
 log.info "Copyright (C) IARC/WHO"
 log.info "This program comes with ABSOLUTELY NO WARRANTY; for details see LICENSE"
@@ -70,8 +68,6 @@ if (params.help) {
     log.info '                                           e.g. --RG "PL:ILLUMINA\tDS:custom_read_group".'
     log.info '                                           Default: "PL:ILLUMINA".'
     log.info '    --fastq_ext      STRING                Extension of fastq files (default : fastq.gz)'
-    log.info '    --suffix1        STRING                Suffix of fastq files 1 (default : _1)'
-    log.info '    --suffix2        STRING                Suffix of fastq files 2 (default : _2)'
     log.info '    --bed        STRING                bed file with interval list'
     log.info '    --GATK_bundle        STRING                path to GATK bundle files (default : .)'
     log.info '    --GATK_folder        STRING                path to GATK GenomeAnalysisTK.jar file (default : .)'
@@ -93,13 +89,10 @@ if (params.help) {
   log.info "mem=${params.mem}"
   log.info "RG=${params.RG}"
   log.info "fastq_ext=${params.fastq_ext}"
-  log.info "suffix1=${params.suffix1}"
-  log.info "suffix2=${params.suffix2}"
   log.info "output_folder=${params.output_folder}"
   log.info "bed=${params.bed}"
   log.info "GATK_bundle=${params.GATK_bundle}"
   log.info "GATK_folder=${params.GATK_folder}"
-  log.info "js=${params.js}"
   log.info "postaltjs=${params.postaltjs}"
   log.info "indel_realignment=${params.indel_realignment}"
   log.info "recalibration=${params.recalibration}"
@@ -117,17 +110,47 @@ ref_ann = file( params.ref+'.ann' )
 ref_amb = file( params.ref+'.amb' )
 ref_pac = file( params.ref+'.pac' )
 ref_alt = file( params.ref+'.alt' )
+postaltjs = file( params.postaltjs )
 
+import groovy.io.FileType
 mode = 'fastq'
-if (file(params.input_folder).listFiles().findAll { it.name ==~ /.*${params.fastq_ext}/ }.size() > 0){
-    println "fastq files found, proceed with alignment"
+//inputsubfolders = file(params.input_folder).listFiles()
+if(params.input_file){
+	Channel.fromPath("${params.input_file}")
+			.splitCsv()
+			.map { row -> tuple("${row[0]}" , "${row[1]}" , file("${row[2]}"), file("${row[3]}")) }
+			.set { readPairs }
+	//readPairs2 = readPairs0.groupTuple(by: 0)		
+	//readPairs.subscribe { row -> println "${row}" }
+	//readPairs.subscribe { row -> println "${row}" }
+
+	//tests 
+	
 }else{
-    if (file(params.input_folder).listFiles().findAll { it.name ==~ /.*bam/ }.size() > 0){
-        println "BAM files found, proceed with realignment"; mode ='bam'; files = Channel.fromPath( params.input_folder+'/*.bam' )
-    }else{
-        println "ERROR: input folder contains no fastq nor BAM files"; System.exit(0)
-    }
+   if (file(params.input_folder).listFiles().findAll { it.name ==~ /.*${params.fastq_ext}/ }.size() > 0){
+    	println "fastq files found, proceed with alignment"
+	readPairs = Channel.fromFilePairs("${params.input_folder}/*_{1,2}*.${params.fastq_ext}")
+			   .map { row -> tuple(row[0] , "" , row[1][0], row[1][1]) }
+	Channel.fromFilePairs("${params.input_folder}/*{1,2}*.${params.fastq_ext}")
+                           .map { row -> tuple(row[0] , "" , row[1][0], row[1][1]) }
+			   .subscribe { row -> println "${row}" }
+   }else{
+    	if (file(params.input_folder).listFiles().findAll { it.name ==~ /.*bam/ }.size() > 0){
+        	println "BAM files found, proceed with realignment"; mode ='bam'; files = Channel.fromPath( params.input_folder+'/*.bam' )
+        }else{
+        	println "ERROR: input folder contains no fastq nor BAM files"; System.exit(0)
+        }
+   }
 }
+//for (folder in inputsubfolders){
+//	if (folder.listFiles().findAll { it.name ==~ /.*${params.fastq_ext}/ }.size() ==2 ){
+//	    println "${folder}"	    
+//	    println "1 pair of fastq files found, proceed with alignment"
+//	    readPtmp  = 
+//          readPairs = readPairs.concat( Channel.fromFilePairs("${folder}/*${params.fastq_ext}") ).subscribe { println it }
+//	}
+//}
+
 
 if(mode=='bam'){
     process bam_realignment {
@@ -162,7 +185,7 @@ if(mode=='bam'){
 	  postalt=''
 	}else{
 	  ignorealt=''
-	  postalt=params.js+' '+params.postaltjs+' '+params.ref+'.alt |'
+	  postalt='k8 bwa-postalt.js '+params.ref+'.alt |'
 	}
 	if(params.trim==null){
 	  preproc=''
@@ -181,30 +204,27 @@ if(mode=='bam'){
 }
 if(mode=='fastq'){
     println "fastq mode"
-    keys1 = file(params.input_folder).listFiles().findAll { it.name ==~ /.*${params.suffix1}.${params.fastq_ext}/ }.collect { it.getName() }
-                                                                                                               .collect { it.replace("${params.suffix1}.${params.fastq_ext}",'') }
-    keys2 = file(params.input_folder).listFiles().findAll { it.name ==~ /.*${params.suffix2}.${params.fastq_ext}/ }.collect { it.getName() }
-                                                                                                               .collect { it.replace("${params.suffix2}.${params.fastq_ext}",'') }
-    if ( !(keys1.containsAll(keys2)) || !(keys2.containsAll(keys1)) ) {println "\n ERROR : There is at least one fastq without its mate, please check your fastq files."; System.exit(0)}
-
-    println keys1
+    //keys1 = file(params.input_folder).listFiles().findAll { it.name ==~ /.*${params.suffix1}.${params.fastq_ext}/ }.collect { it.getName() }
+     //                                                                                                          .collect { it.replace("${params.suffix1}.${params.fastq_ext}",'') }
+    //keys2 = file(params.input_folder).listFiles().findAll { it.name ==~ /.*${params.suffix2}.${params.fastq_ext}/ }.collect { it.getName() }
+    //                                                                                                           .collect { it.replace("${params.suffix2}.${params.fastq_ext}",'') }
+    //if ( !(keys1.containsAll(keys2)) || !(keys2.containsAll(keys1)) ) {println "\n ERROR : There is at least one fastq without its mate, please check your fastq files."; System.exit(0)}
 
     // Gather files ending with _1 suffix
-    reads1 = Channel
-    .fromPath( params.input_folder+'/*'+params.suffix1+'.'+params.fastq_ext )
-    .map {  path -> [ path.name.replace("${params.suffix1}.${params.fastq_ext}",""), path ] }
+    //reads1 = Channel
+    //.fromPath( params.input_folder+'/*'+params.suffix1+'.'+params.fastq_ext )
+    //.map {  path -> [ path.name.replace("${params.suffix1}.${params.fastq_ext}",""), path ] }
 
     // Gather files ending with _2 suffix
-    reads2 = Channel
-    .fromPath( params.input_folder+'/*'+params.suffix2+'.'+params.fastq_ext )
-    .map {  path -> [ path.name.replace("${params.suffix2}.${params.fastq_ext}",""), path ] }
+    //reads2 = Channel
+    //.fromPath( params.input_folder+'/*'+params.suffix2+'.'+params.fastq_ext )
+    //.map {  path -> [ path.name.replace("${params.suffix2}.${params.fastq_ext}",""), path ] }
 
     // Match the pairs on two channels having the same 'key' (name) and emit a new pair containing the expected files
-    readPairs = reads1
-    .phase(reads2)
-    .map { pair1, pair2 -> [ pair1[1], pair2[1] ] }
-
-    println reads1
+    //readPairs = reads1
+    //.phase(reads2)
+    //.map { pair1, pair2 -> [ pair1[1], pair2[1] ] }
+    //println reads1
         
     process fastq_alignment {
 
@@ -213,7 +233,7 @@ if(mode=='fastq'){
         tag { file_tag }
         
         input:
-        file pair from readPairs
+        set val(file_tag), val(read_group), file(pair1), file(pair2) from readPairs
 	file ref
 	file ref_fai
 	file ref_sa
@@ -222,6 +242,7 @@ if(mode=='fastq'){
 	file ref_amb
 	file ref_pac
 	file ref_alt
+	file postaltjs
                  
         output:
 	set val(file_tag_new), file("${file_tag_new}.bam") into bam_files
@@ -229,7 +250,10 @@ if(mode=='fastq'){
 	if( (params.recalibration==null)&(params.indel_realignment==null) ) publishDir params.output_folder, mode: 'move'
 
         shell:
-        file_tag = pair[0].name.replace("${params.suffix1}.${params.fastq_ext}","")
+        //file_tag = readPairs[0]
+	//pair     = readPairs[1]
+	//pair     = pairs[0]
+	pair = [pair1,pair2]
 	file_tag_new=file_tag
 	if(params.trim) file_tag_new=file_tag_new+'_trimmed'
 	if(params.alt)  file_tag_new=file_tag_new+'_alt'
@@ -238,7 +262,7 @@ if(mode=='fastq'){
 	  postalt=''
 	}else{
 	  ignorealt=''
-	  postalt=params.js+' '+params.postaltjs+' '+params.ref+'.alt |'
+	  postalt='k8 bwa-postalt.js '+params.ref+'.alt |'
 	}
 	bwa_threads  = params.cpu.intdiv(2) - 1
 	sort_threads = params.cpu.intdiv(2) - 1
@@ -246,17 +270,20 @@ if(mode=='fastq'){
 	if(params.trim==null){
 		'''
         	set -o pipefail
-		bwa mem !{ignorealt} -M -t!{bwa_threads} -R "@RG\\tID:!{file_tag}\\tSM:!{file_tag}\\t!{params.RG}" !{params.ref} !{pair[0]} !{pair[1]} | !{postalt} samblaster --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
+		bwa mem !{ignorealt} -M -t!{bwa_threads} -R "@RG\\tID:!{file_tag}.!{read_group}\\tSM:!{file_tag}\\t!{params.RG}" !{params.ref} !{pair[0]} !{pair[1]} | !{postalt} samblaster --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
 		'''
  	}else{
 		'''
         	set -o pipefail
-		AdapterRemoval --file1 !{pair[0]} --file2 !{pair[1]} --interleaved-output --output1 /dev/stdout | bwa mem !{ignorealt} -M -t!{bwa_threads} -R "@RG\\tID:!{file_tag}\\tSM:!{file_tag}\\t!{params.RG}" -p !{params.ref} - | !{postalt} samblaster --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
+		AdapterRemoval --file1 !{pair[0]} --file2 !{pair[1]} --interleaved-output --output1 /dev/stdout | bwa mem !{ignorealt} -M -t!{bwa_threads} -R "@RG\\tID:!{file_tag}.!{read_group}\\tSM:!{file_tag}\\t!{params.RG}" -p !{params.ref} - | !{postalt} samblaster --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
 		'''
 	}
 	
      }
 }
+
+
+
 
 if(params.indel_realignment){
         // Local realignment around indels
