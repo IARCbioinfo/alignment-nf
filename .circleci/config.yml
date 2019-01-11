@@ -9,10 +9,10 @@ jobs:
                     - run: cd ~ && git clone --depth=1 https://github.com/iarcbioinfo/data_test.git
                     - run: echo " docker.runOptions = '-u $(id -u):$(id -g)' " > ~/.nextflow/config
                     - run: cd ~/project/ ; docker build -t iarcbioinfo/alignment-nf .
-                    - run: cd ; nextflow run ~/project/alignment-nf/alignment.nf --help
-                    - run: cd ; nextflow run ~/project/alignment-nf/alignment.nf -with-docker iarcbioinfo/alignment-nf --input_folder ~/data_test/BAM/ --ref ~/data_test/REF/17.fasta --output_folder ~/results/ --cpu 4 --mem 4 -with-dag dag.png 
-                    - run: cd ; nextflow run ~/project/alignment-nf/alignment.nf -with-docker iarcbioinfo/alignment-nf --input_folder ~/data_test/BAM/ --ref ~/data_test/REF/17.fasta --output_folder ~/results/ --cpu 4 --mem 4 -with-dag dag.html
-                    - run: cd ; cp ~/results/nf-pipeline_info/dag.* ~/project/
+                    - run: cd ; nextflow run ~/project/alignment.nf --help
+                    - run: cd ; nextflow run ~/project/alignment.nf -with-docker iarcbioinfo/alignment-nf --input_folder ~/data_test/BAM/ --ref ~/data_test/REF/17.fasta --output_folder ~/results/ --cpu 2 --mem 4 -with-dag dag.png 
+                    - run: cd ; nextflow run ~/project/alignment.nf -with-docker iarcbioinfo/alignment-nf --input_folder ~/data_test/BAM/ --ref ~/data_test/REF/17.fasta --output_folder ~/results/ --cpu 2 --mem 4 -with-dag dag.html
+                    - run: cd ; cp ~/dag.* ~/project/
                     - deploy:
                             branch: [master, dev]
                             command: chmod +x deploy.sh && ./deploy.sh
