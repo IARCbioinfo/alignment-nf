@@ -119,13 +119,34 @@ if(params.input_file){
 	Channel.fromPath("${params.input_file}")
 			.splitCsv()
 			.map { row -> tuple("${row[0]}" , "${row[1]}" , file("${row[2]}"), file("${row[3]}")) }
-			.set { readPairs }
-	//readPairs2 = readPairs0.groupTuple(by: 0)		
-	//readPairs.subscribe { row -> println "${row}" }
+			.set { readPairstmp }
+	
+	readPairs2merge = readPairstmp.groupTuple(by: 0)
+	//bam_bai_files2merge.subscribe { row -> println "${row}" }
+	single   = Channel.create()
+	multiple = Channel.create()
+	multiple1 = Channel.create()
+	multiple2 = Channel.create()
+	readPairs2merge.choice( single,multiple ) { a -> a[1].size() == 1 ? 0 : 1 }
+	single2 = single.map { row -> tuple(row[0] , 1 , row[1][0], row[2][0], row[3][0])  }
+      	//	.subscribe { row -> println "${row}" }
+	multiple.separate(multiple1,multiple2){ row -> [ [row[0] , 2 ,  row[1][0], row[2][0], row[3][0]] , [row[0] , 2 , row[1][1], row[2][1],  row[3][1]] ] }
+	readPairs=single2.concat(multiple1 ,multiple2 )
 	//readPairs.subscribe { row -> println "${row}" }
 
-	//tests 
-	
+	//Tests
+	//Channel.fromPath("${params.input_file}")
+        //                .splitCsv()
+        //                .map { row -> tuple("${row[0]}" , "${row[1]}" , file("${row[2]}"), file("${row[3]}")) }
+        //                .set {bam_bai_filesTest  }
+	//bam_bai_files2merge = bam_bai_filesTest.groupTuple(by: 0)
+
+	//queue1 = Channel.create()
+	//queue2 = Channel.create()
+	//bam_bai_files2merge.choice( queue1, queue2 ) { a -> a[1].size() == 1 ? 0 : 1 }
+	//queue1.subscribe { row -> println "${row}" }
+	//queue2.subscribe { row -> println "${row}" }
+
 }else{
    if (file(params.input_folder).listFiles().findAll { it.name ==~ /.*${params.fastq_ext}/ }.size() > 0){
     	println "fastq files found, proceed with alignment"
@@ -142,15 +163,8 @@ if(params.input_file){
         }
    }
 }
-//for (folder in inputsubfolders){
-//	if (folder.listFiles().findAll { it.name ==~ /.*${params.fastq_ext}/ }.size() ==2 ){
-//	    println "${folder}"	    
-//	    println "1 pair of fastq files found, proceed with alignment"
-//	    readPtmp  = 
-//          readPairs = readPairs.concat( Channel.fromFilePairs("${folder}/*${params.fastq_ext}") ).subscribe { println it }
-//	}
-//}
 
+//          readPairs = readPairs.concat( Channel.fromFilePairs("${folder}/*${params.fastq_ext}") ).subscribe { println it }
 
 if(mode=='bam'){
     process bam_realignment {
@@ -204,36 +218,15 @@ if(mode=='bam'){
 }
 if(mode=='fastq'){
     println "fastq mode"
-    //keys1 = file(params.input_folder).listFiles().findAll { it.name ==~ /.*${params.suffix1}.${params.fastq_ext}/ }.collect { it.getName() }
-     //                                                                                                          .collect { it.replace("${params.suffix1}.${params.fastq_ext}",'') }
-    //keys2 = file(params.input_folder).listFiles().findAll { it.name ==~ /.*${params.suffix2}.${params.fastq_ext}/ }.collect { it.getName() }
-    //                                                                                                           .collect { it.replace("${params.suffix2}.${params.fastq_ext}",'') }
-    //if ( !(keys1.containsAll(keys2)) || !(keys2.containsAll(keys1)) ) {println "\n ERROR : There is at least one fastq without its mate, please check your fastq files."; System.exit(0)}
-
-    // Gather files ending with _1 suffix
-    //reads1 = Channel
-    //.fromPath( params.input_folder+'/*'+params.suffix1+'.'+params.fastq_ext )
-    //.map {  path -> [ path.name.replace("${params.suffix1}.${params.fastq_ext}",""), path ] }
-
-    // Gather files ending with _2 suffix
-    //reads2 = Channel
-    //.fromPath( params.input_folder+'/*'+params.suffix2+'.'+params.fastq_ext )
-    //.map {  path -> [ path.name.replace("${params.suffix2}.${params.fastq_ext}",""), path ] }
-
-    // Match the pairs on two channels having the same 'key' (name) and emit a new pair containing the expected files
-    //readPairs = reads1
-    //.phase(reads2)
-    //.map { pair1, pair2 -> [ pair1[1], pair2[1] ] }
-    //println reads1
         
     process fastq_alignment {
 
         cpus params.cpu
         memory params.mem+'GB'    
-        tag { file_tag }
+        tag { "${file_tag}_${read_group}" }
         
         input:
-        set val(file_tag), val(read_group), file(pair1), file(pair2) from readPairs
+        set val(file_tag), val(nb_rgs), val(read_group), file(pair1), file(pair2) from readPairs
 	file ref
 	file ref_fai
 	file ref_sa
@@ -245,59 +238,94 @@ if(mode=='fastq'){
 	file postaltjs
                  
         output:
-	set val(file_tag_new), file("${file_tag_new}.bam") into bam_files
-	file("${file_tag_new}.bam.bai") into bai_files
-	if( (params.recalibration==null)&(params.indel_realignment==null) ) publishDir params.output_folder, mode: 'move'
+	set val(file_tag_new), val(nb_rgs), val(read_group),  file("${file_tag_new}*.bam*") into bam_bai_files
+	if( (params.recalibration==null)&(params.indel_realignment==null) ) publishDir params.output_folder, mode: 'copy'
 
         shell:
-        //file_tag = readPairs[0]
-	//pair     = readPairs[1]
-	//pair     = pairs[0]
 	pair = [pair1,pair2]
-	file_tag_new=file_tag
-	if(params.trim) file_tag_new=file_tag_new+'_trimmed'
-	if(params.alt)  file_tag_new=file_tag_new+'_alt'
-	if(params.alt==null){
-	  ignorealt='-j'
-	  postalt=''
-	}else{
-	  ignorealt=''
-	  postalt='k8 bwa-postalt.js '+params.ref+'.alt |'
-	}
+	file_tag_new=file_tag 
+	//+"_${read_group}"
+	println file_tag_new
 	bwa_threads  = params.cpu.intdiv(2) - 1
-	sort_threads = params.cpu.intdiv(2) - 1
-	sort_mem     = params.mem.intdiv(4)
+        sort_threads = params.cpu.intdiv(2) - 1
+        sort_mem     = params.mem.intdiv(4)
+	if(params.trim) file_tag_new=file_tag_new+'_trimmed'
+        if(params.alt)  file_tag_new=file_tag_new+'_alt'	
+	if(nb_rgs==1){
+		file_tag_new=file_tag_new+"_${read_group}"
+		compsort=" sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort -t ${sort_threads} -m ${sort_mem}G --tmpdir=${file_tag}_tmp -o ${file_tag_new}.bam /dev/stdin"
+	}else{
+		file_tag_new=file_tag_new
+		compsort=" sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort -n -t ${sort_threads} -m ${sort_mem}G --tmpdir=${file_tag}_tmp -o ${file_tag_new}_${read_group}.bam /dev/stdin"
+	}
+        if(params.alt==null){
+          ignorealt='-j'
+          postalt=''
+        }else{
+          ignorealt=''
+          postalt='k8 bwa-postalt.js '+params.ref+'.alt |'
+        }
 	if(params.trim==null){
 		'''
         	set -o pipefail
-		bwa mem !{ignorealt} -M -t!{bwa_threads} -R "@RG\\tID:!{file_tag}.!{read_group}\\tSM:!{file_tag}\\t!{params.RG}" !{params.ref} !{pair[0]} !{pair[1]} | !{postalt} samblaster --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
+		bwa mem !{ignorealt} -M -t!{bwa_threads} -R "@RG\\tID:!{file_tag}.!{read_group}\\tSM:!{file_tag}\\t!{params.RG}" !{params.ref} !{pair[0]} !{pair[1]} | !{postalt} samblaster -M --addMateTags | !{compsort}
 		'''
  	}else{
 		'''
         	set -o pipefail
-		AdapterRemoval --file1 !{pair[0]} --file2 !{pair[1]} --interleaved-output --output1 /dev/stdout | bwa mem !{ignorealt} -M -t!{bwa_threads} -R "@RG\\tID:!{file_tag}.!{read_group}\\tSM:!{file_tag}\\t!{params.RG}" -p !{params.ref} - | !{postalt} samblaster --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
+		AdapterRemoval --file1 !{pair[0]} --file2 !{pair[1]} --interleaved-output --output1 /dev/stdout | bwa mem !{ignorealt} -M -t!{bwa_threads} -R "@RG\\tID:!{file_tag}.!{read_group}\\tSM:!{file_tag}\\t!{params.RG}" -p !{params.ref} - | !{postalt} samblaster -M --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
 		'''
 	}
 	
      }
 }
 
+single_bam   = Channel.create()
+multiple_bam = Channel.create()
+bam_bai_files.choice( single_bam,multiple_bam ) { a -> a[1] == 1 ? 0 : 1 }
+
+bam2merge = multiple_bam.groupTuple(by: 0)
+			 .map { row -> tuple(row[0] , row[1][0] , row[2], row[3][0] , row[3][1] , null ,  null  ) }
+//( bam2merge, bam2mergeB ) = bam2merge1.into( 2 )
+
+//bam2mergeB.subscribe { row -> println "${row}" }
+
+process merge {
+            cpus params.cpu
+            memory params.mem+'G'
+            tag { file_tag }
+            input:
+            set val(file_tag), val(nb_rgs), val(read_group),  file(bam1), file(bam2), file(bai1), file(bai2) from bam2merge
+            output:
+            set val(file_tag_new), file("${file_tag_new}.bam"), file("${file_tag_new}.bam.bai") into bam_bai_merged
+             if( (params.recalibration==null)&(params.indel_realignment==null) ) publishDir params.output_folder, mode: 'move'
+
+            shell:
+            file_tag_new=file_tag+"_${read_group[0]}-${read_group[1]}_merged"
+	    merge_threads  = params.cpu.intdiv(2) - 1
+	    sort_threads = params.cpu.intdiv(2) - 1
+            sort_mem     = params.mem.intdiv(4)
+            '''
+	    sambamba merge -t !{merge_threads} -l 0 /dev/stdout !{bam1} !{bam2} |  sambamba view -h /dev/stdin | samblaster -M --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
+            '''
+}
+
+bam_bai_files=single_bam.map { row -> tuple(row[0],row[3][0],row[3][1] ) }
+			.concat(bam_bai_merged)
+//                        .subscribe { row -> println "${row}" }
 
 
-
-if(params.indel_realignment){
+if(params.indel_realignment){ //Note: deprecated in gatk4
         // Local realignment around indels
         process indel_realignment {
             cpus params.cpu
             memory params.mem+'G'
             tag { file_tag }
             input:
-	    set val(file_tag), file("${file_tag}.bam") from bam_files
-	    file("${file_tag}.bam.bai") from bai_files
+	    set val(file_tag), file("${file_tag}.bam"), file("${file_tag}.bam.bai") from bam_bai_files
             output:
             file("${file_tag_new}_target_intervals.list") into indel_realign_target_files
-            set val(file_tag_new), file("${file_tag_new}.bam") into bam_files2
-	    file("${file_tag_new}.bam.bai") into bai_files2
+            set val(file_tag_new), file("${file_tag_new}.bam"), file("${file_tag_new}.bam.bai") into bam_bai_files2
 	    if(params.recalibration==null) publishDir params.output_folder, mode: 'move'
 	    
             shell:
@@ -306,15 +334,14 @@ if(params.indel_realignment){
 	    indelsvcf=`ls !{params.GATK_bundle}/*indels*.vcf* | grep -v ".tbi" | grep -v ".idx"`
 	    knowncom=''
 	    for ll in $indelsvcf; do knowncom=$knowncom' -known '$ll; done
-            java -Xmx!{params.mem}g -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T RealignerTargetCreator -nt !{params.cpu} -R !{params.ref} -I !{file_tag}.bam $knowncom -o !{file_tag_new}_target_intervals.list
-            java -Xmx!{params.mem}g -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T IndelRealigner -R !{params.ref} -I !{file_tag}.bam -targetIntervals !{file_tag_new}_target_intervals.list $knowncom -o !{file_tag_new}.bam
+            gatk RealignerTargetCreator --java-options "-Xmx!{params.mem}G" -R !{params.ref} -I !{file_tag}.bam $knowncom -o !{file_tag_new}_target_intervals.list
+            gatk IndelRealigner --java-options "-Xmx!{params.mem}G" -R !{params.ref} -I !{file_tag}.bam -targetIntervals !{file_tag_new}_target_intervals.list $knowncom -o !{file_tag_new}.bam
 	    mv !{file_tag_new}.bai !{file_tag_new}.bam.bai
             '''
         }
 }else{
     if(params.recalibration){
-        bam_files2 = bam_files
-	bai_files2 = bai_files
+        bam_bai_files2 = bam_bai_files
     }
 }
 
@@ -326,29 +353,26 @@ if(params.recalibration){
     tag { file_tag }
         
     input:
-    set val(file_tag), file("${file_tag}.bam") from bam_files2
-    file("${file_tag}.bam.bai") from bai_files2
+    set val(file_tag), file("${file_tag}.bam"), file("${file_tag}.bam.bai") from bam_bai_files2
     output:
-    file("${file_tag_new}_recal.table") into recal_table_files
-    file("${file_tag_new}_post_recal.table") into recal_table_post_files
-    file("${file_tag_new}_recalibration_plots.pdf") into recal_plots_files
-    set val(file_tag_new), file("${file_tag_new}.bam") into recal_bam_files
-    file("${file_tag_new}.bam.bai") into recal_bai_files
+    file("*_recal.table") into recal_table_files
+    file("*plots.pdf") into recal_plots_files
+    set val(file_tag_new), file("${file_tag_new}.bam"), file("${file_tag_new}.bam.bai") into recal_bam_bai_files
     publishDir params.output_folder, mode: 'move'
 
     shell:
-    file_tag_new=file_tag+'_BQSrecalibrated'
+    file_tag_new=file_tag+'_BQSRecalibrated'
     '''
     indelsvcf=(`ls !{params.GATK_bundle}/*indels*.vcf* | grep -v ".tbi" | grep -v ".idx"`)
     dbsnpvcfs=(`ls !{params.GATK_bundle}/*dbsnp*.vcf* | grep -v ".tbi" | grep -v ".idx"`)
     dbsnpvcf=${dbsnpvcfs[@]:(-1)}
     knownSitescom=''
-    for ll in $indelsvcf; do knownSitescom=$knownSitescom' -knownSites '$ll; done
-    knownSitescom=$knownSitescom' -knownSites '$dbsnpvcf
-    java -Xmx!{params.mem}g -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T BaseRecalibrator -nct !{params.cpu} -R !{params.ref} -I !{file_tag}.bam $knownSitescom -L !{params.bed} -o !{file_tag_new}_recal.table
-    java -Xmx!{params.mem}g -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T BaseRecalibrator -nct !{params.cpu} -R !{params.ref} -I !{file_tag}.bam $knownSitescom -BQSR !{file_tag_new}_recal.table -L !{params.bed} -o !{file_tag_new}_post_recal.table		
-    java -Xmx!{params.mem}g -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T AnalyzeCovariates -R !{params.ref} -before !{file_tag_new}_recal.table -after !{file_tag_new}_post_recal.table -plots !{file_tag_new}_recalibration_plots.pdf	
-    java -Xmx!{params.mem}g -jar !{params.GATK_folder}/GenomeAnalysisTK.jar -T PrintReads -nct !{params.cpu} -R !{params.ref} -I !{file_tag}.bam -BQSR !{file_tag_new}_recal.table -L !{params.bed} -o !{file_tag_new}.bam
+    for ll in $indelsvcf; do knownSitescom=$knownSitescom' --known-sites '$ll; done
+    knownSitescom=$knownSitescom' --known-sites '$dbsnpvcf
+    gatk BaseRecalibrator --java-options "-Xmx!{params.mem}G" -R !{params.ref} -I !{file_tag}.bam $knownSitescom -O !{file_tag}_recal.table
+    gatk ApplyBQSR --java-options "-Xmx!{params.mem}G" -R !{params.ref} -I !{file_tag}.bam --bqsr-recal-file !{file_tag}_recal.table -O !{file_tag_new}.bam
+    gatk BaseRecalibrator --java-options "-Xmx!{params.mem}G" -R !{params.ref} -I !{file_tag}.bam $knownSitescom -O !{file_tag_new}_recal.table		
+    gatk AnalyzeCovariates --java-options "-Xmx!{params.mem}G" -before !{file_tag}_recal.table -after !{file_tag_new}_recal.table -plots !{file_tag_new}_recalibration_plots.pdf	
     mv !{file_tag_new}.bai !{file_tag_new}.bam.bai
     '''
     }
