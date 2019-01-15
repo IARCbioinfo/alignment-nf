@@ -184,8 +184,7 @@ if(mode=='bam'){
 	file ref_alt
      
         output:
-	set val(file_tag_new), file("${file_tag_new}.bam") into bam_files
-	file("${file_tag_new}.bam.bai") into bai_files
+	set val(file_tag_new), file("${file_tag_new}.bam*") into bam_bai_files
 	if( (params.recalibration==null)&(params.indel_realignment==null) ) publishDir params.output_folder, mode: 'move'
 
         shell:
