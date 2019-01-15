@@ -280,11 +280,18 @@ if(mode=='fastq'){
 }
 
 single_bam   = Channel.create()
-multiple_bam = Channel.create()
-bam_bai_files.choice( single_bam,multiple_bam ) { a -> a[1] == 1 ? 0 : 1 }
+multiple_bam0 = Channel.create()
+bam_bai_files.choice( single_bam,multiple_bam0 ) { a -> a[1] == 1 ? 0 : 1 }
 
-bam2merge = multiple_bam.groupTuple(by: 0)
+( mult2count, multiple_bam ) = multiple_bam0.into( 2 )
+
+nmult = mult2count.count().println()
+if(nmult>0 ){
+	bam2merge = multiple_bam.groupTuple(by: 0)
 			 .map { row -> tuple(row[0] , row[1][0] , row[2], row[3][0] , row[3][1] , null ,  null  ) }
+}else{
+	bam2merge = Channel.create()	
+}
 //( bam2merge, bam2mergeB ) = bam2merge1.into( 2 )
 
 //bam2mergeB.subscribe { row -> println "${row}" }
