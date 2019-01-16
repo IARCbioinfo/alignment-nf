@@ -279,24 +279,24 @@ if(mode=='fastq'){
      }
 }
 
-single_bam   = Channel.create()
-multiple_bam0 = Channel.create()
-bam_bai_files.choice( single_bam,multiple_bam0 ) { a -> a[1] == 1 ? 0 : 1 }
 
-( mult2count, multiple_bam ) = multiple_bam0.into( 2 )
+if(params.input_file){
+	single_bam   = Channel.create()
+	multiple_bam0 = Channel.create()
+	bam_bai_files.choice( single_bam,multiple_bam0 ) { a -> a[1] == 1 ? 0 : 1 }
+	( mult2count, multiple_bam ) = multiple_bam0.into( 2 )
 
-nmult = mult2count.count().println()
-if(nmult>0 ){
-	bam2merge = multiple_bam.groupTuple(by: 0)
+	nmult = mult2count.count().println()
+	if(nmult>0 ){
+		bam2merge = multiple_bam.groupTuple(by: 0)
 			 .map { row -> tuple(row[0] , row[1][0] , row[2], row[3][0] , row[3][1] , null ,  null  ) }
-}else{
-	bam2merge = Channel.create()	
-}
-//( bam2merge, bam2mergeB ) = bam2merge1.into( 2 )
+	}else{
+		bam2merge = Channel.create()	
+	}
+	//( bam2merge, bam2mergeB ) = bam2merge1.into( 2 )
+	//bam2mergeB.subscribe { row -> println "${row}" }
 
-//bam2mergeB.subscribe { row -> println "${row}" }
-
-process merge {
+	process merge {
             cpus params.cpu
             memory params.mem+'G'
             tag { file_tag }
@@ -310,47 +310,16 @@ process merge {
             file_tag_new=file_tag+"_${read_group[0]}-${read_group[1]}_merged"
 	    merge_threads  = params.cpu.intdiv(2) - 1
 	    sort_threads = params.cpu.intdiv(2) - 1
-            sort_mem     = params.mem.intdiv(4)
+            sort_mem     = params.mem.intdiv(2)
             '''
 	    sambamba merge -t !{merge_threads} -l 0 /dev/stdout !{bam1} !{bam2} |  sambamba view -h /dev/stdin | samblaster -M --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
             '''
-}
+	}
 
-bam_bai_files=single_bam.map { row -> tuple(row[0],row[3][0],row[3][1] ) }
+	bam_bai_files=single_bam.map { row -> tuple(row[0],row[3][0],row[3][1] ) }
 			.concat(bam_bai_merged)
 //                        .subscribe { row -> println "${row}" }
-
-
-if(params.indel_realignment){ //Note: deprecated in gatk4
-        // Local realignment around indels
-        process indel_realignment {
-            cpus params.cpu
-            memory params.mem+'G'
-            tag { file_tag }
-            input:
-	    set val(file_tag), file("${file_tag}.bam"), file("${file_tag}.bam.bai") from bam_bai_files
-            output:
-            file("${file_tag_new}_target_intervals.list") into indel_realign_target_files
-            set val(file_tag_new), file("${file_tag_new}.bam"), file("${file_tag_new}.bam.bai") into bam_bai_files2
-	    if(params.recalibration==null) publishDir params.output_folder, mode: 'move'
-	    
-            shell:
-	    file_tag_new=file_tag+'_indelrealigned'
-            '''
-	    indelsvcf=`ls !{params.GATK_bundle}/*indels*.vcf* | grep -v ".tbi" | grep -v ".idx"`
-	    knowncom=''
-	    for ll in $indelsvcf; do knowncom=$knowncom' -known '$ll; done
-            gatk RealignerTargetCreator --java-options "-Xmx!{params.mem}G" -R !{params.ref} -I !{file_tag}.bam $knowncom -o !{file_tag_new}_target_intervals.list
-            gatk IndelRealigner --java-options "-Xmx!{params.mem}G" -R !{params.ref} -I !{file_tag}.bam -targetIntervals !{file_tag_new}_target_intervals.list $knowncom -o !{file_tag_new}.bam
-	    mv !{file_tag_new}.bai !{file_tag_new}.bam.bai
-            '''
-        }
-}else{
-    if(params.recalibration){
-        bam_bai_files2 = bam_bai_files
-    }
 }
-
 if(params.recalibration){
 // base quality score recalibration
    process base_quality_score_recalibration {
@@ -359,7 +328,7 @@ if(params.recalibration){
     tag { file_tag }
         
     input:
-    set val(file_tag), file("${file_tag}.bam"), file("${file_tag}.bam.bai") from bam_bai_files2
+    set val(file_tag), file("${file_tag}.bam"), file("${file_tag}.bam.bai") from bam_bai_files
     output:
     file("*_recal.table") into recal_table_files
     file("*plots.pdf") into recal_plots_files
