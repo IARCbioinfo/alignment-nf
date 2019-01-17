@@ -1,7 +1,8 @@
-# Set the base image to Debian
+################## BASE IMAGE #####################
 FROM nfcore/base
 
-# METADATA
+
+################## METADATA #######################
 
 LABEL base_image="nfcore/base"
 LABEL version="1.0"

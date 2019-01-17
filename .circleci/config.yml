@@ -11,7 +11,11 @@ jobs:
                     - run: cd ~/project/ ; docker build -t iarcbioinfo/alignment-nf .
                     - run: cd ; nextflow run ~/project/alignment.nf --help
                     - run: cd ; nextflow run ~/project/alignment.nf -with-docker iarcbioinfo/alignment-nf --input_folder ~/data_test/BAM/ --ref ~/data_test/REF/17.fasta --output_folder ~/results/ --cpu 2 --mem 4 -with-dag dag.png 
-                    - run: cd ; nextflow run ~/project/alignment.nf -with-docker iarcbioinfo/alignment-nf --input_folder ~/data_test/BAM/ --ref ~/data_test/REF/17.fasta --output_folder ~/results/ --cpu 2 --mem 4 -with-dag dag.html
+                    - run: cd ; echo -e "file1,RG1,$HOME/data_test/FASTQ/NA06984_T_1.fastq.gz,$HOME/data_test/FASTQ/NA06984_T_2.fastq.gz\nfile2,RG1,$HOME/data_test/FASTQ/NA06984_T_1.fastq.gz,$HOME/data_test/FASTQ/NA06984_T_2.fastq.gz" > input.txt ; nextflow run ~/project/alignment.nf -with-docker iarcbioinfo/alignment-nf --input_file input_multiplex.txt --ref ~/data_test/REF/17.fasta --output_folder ~/results/ --cpu 2 --mem 4
+                    - run: cd ; nextflow run ~/project/alignment.nf -with-docker iarcbioinfo/alignment-nf --input_file input.txt --ref ~/data_test/REF/17.fasta --output_folder ~/results/ --recalibration --cpu 2 --mem 4 -with-dag dag.png
+                    - run: cd ; echo -e "file1,RG1,$HOME/data_test/FASTQ/NA06984_T_1.fastq.gz,$HOME/data_test/FASTQ/NA06984_T_2.fastq.gz\nfile2,RG1,$HOME/data_test/FASTQ/NA06984_T_1.fastq.gz,$HOME/data_test/FASTQ/NA06984_T_2.fastq.gz\nfile2,RG2,$HOME/data_test/FASTQ/NA06984_T_1.fastq.gz,$HOME/data_test/FASTQ/NA06984_T_2.fastq.gz" > input_multiplex.txt ; nextflow run ~/project/alignment.nf -with-docker iarcbioinfo/alignment-nf --input_file input_multiplex.txt --ref ~/data_test/REF/17.fasta --output_folder ~/results/ --cpu 2 --mem 4
+                    - run: cd ; nextflow run ~/project/alignment.nf -with-docker iarcbioinfo/alignment-nf --input_file input_multiplex.txt --ref ~/data_test/REF/17.fasta --output_folder ~/results/ --recalibration --cpu 2 --mem 4 -with-dag dag.png
+                    - run: cd ; nextflow run ~/project/alignment.nf -with-docker iarcbioinfo/alignment-nf --input_file input_multiplex.txt --ref ~/data_test/REF/17.fasta --output_folder ~/results/ --recalibration --cpu 2 --mem 4 -with-dag dag.html
                     - run: cd ; cp ~/dag.* ~/project/
                     - deploy:
                             branch: [master, dev]
