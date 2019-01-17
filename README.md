@@ -29,16 +29,16 @@ Nextflow pipeline to perform BAM realignment or fastq alignment, with/without lo
 6. [*AdapterRemoval*](https://github.com/MikkelSchubert/adapterremoval)
 
 ### ALT contigs handling
-7. the *k8* javascript execution shell (e.g., available in the [*bwakit*](https://sourceforge.net/projects/bio-bwa/files/bwakit/) archive)
+7. the *k8* javascript execution shell (e.g., available in the [*bwakit*](https://sourceforge.net/projects/bio-bwa/files/bwakit/) archive); must be in the PATH
 8. javascript bwa-postalt.js and the additional fasta reference *.alt* file from [*bwakit*](https://github.com/lh3/bwa/tree/master/bwakit) must be in the same directory as the reference genome file.
 
-### Indel realignment
-9. GATK [*GenomeAnalysisTK.jar*](https://software.broadinstitute.org/gatk/guide/quickstart)
-10. [GATK bundle](https://software.broadinstitute.org/gatk/download/bundle) VCF files with lists of indels (recommended: 1000 genomes and Mills gold standard VCFs)
+### QC
+9. [Qualimap](http://qualimap.bioinfo.cipf.es). 
+10. [Multiqc](http://multiqc.info). 
 
 ### Base quality score recalibration
-11. GATK [*GenomeAnalysisTK.jar*](https://software.broadinstitute.org/gatk/guide/quickstart)
-12. [GATK bundle](https://software.broadinstitute.org/gatk/download/bundle) VCF files with lists of indels and SNVs (recommended: 1000 genomes indels, Mills gold standard indels VCFs, dbsnp VCF)
+11. [GATK4](https://software.broadinstitute.org/gatk/guide/quickstart); wrapper 'gatk' must be in the path
+12. [GATK bundle](https://software.broadinstitute.org/gatk/download/bundle) VCF files with lists of indels and SNVs (recommended: Mills gold standard indels VCFs, dbsnp VCF), and corresponding tabix indexes (.tbi)
 
 To avoid installing the previous tools, install Docker. Docker installation is described in the [IARC-nf](https://github.com/IARCbioinfo/IARC-nf) repository.
 
@@ -53,13 +53,14 @@ To avoid installing the previous tools, install Docker. Docker installation is d
 
 | Name | Example value | Description |
 |-----------|--------------|-------------| 
-|--ref    | hg19.fasta | genome reference  with its index files (*.fai*, *.sa*, *.bwt*, *.ann*, *.amb*, *.pac*; in the same directory) |
+|--ref    | hg19.fasta | genome reference  with its index files (*.fai*, *.sa*, *.bwt*, *.ann*, *.amb*, *.pac*, and *.dict*; in the same directory) |
 |--output_folder   | . | Output folder for aligned BAMs|
 
 * #### Optional
 
 | Name | Default value | Description |
 |-----------|--------------|-------------| 
+|--input_file   | null | Input file (comma-separated) with 3 columns: sample name, read_group_ID, and file path. |
 |--cpu          | 8 | number of CPUs |
 |--mem         | 32 | memory|
 |--mem\_sambamba | 1 | memory for software *sambamba*|
@@ -68,9 +69,8 @@ To avoid installing the previous tools, install Docker. Docker installation is d
 |--suffix1      | \_1 | suffix for second element of read files pair|
 |--suffix2      | \_2 | suffix for second element of read files pair|
 |--bed    | | bed file with interval list|
-|--GATK_bundle  | bundle | path to GATK bundle files|
-|--GATK_folder  | . | path to GATK *GenomeAnalysisTK.jar* file |
-|--js           | k8 | path to javascript interpreter *k8*|
+|--snp_vcf  | dbsnp.vcf | path to SNP VCF from GATK bundle (default : dbsnp.vcf) |
+|--indel_vcf  | Mills_1000G_indels.vcf | path to indel VCF from GATK bundle (default : Mills_1000G_indels.vcf) |
 |--postaltjs    | bwa-postalt.js" | path to postalignment javascript *bwa-postalt.js*|
 
 
@@ -82,7 +82,6 @@ Flags are special parameters without value.
 |-----------|-------------| 
 | --help | print usage and optional parameters |
 |--trim     | enable adapter sequence trimming|
-|--indel_realignment  | perform local indel realignment (GATK)|
 |--recalibration  | perform quality score recalibration (GATK)|
 |--alt         | enable alternative contig handling (for reference genome hg38)|
 
@@ -101,30 +100,28 @@ To use the alternative contigs handling mode, you must provide the **path to an 
 ```bash
 nextflow run iarcbioinfo/alignment-nf --input_folder input --fasta_ref reference/hs38DH.fa --js /user/bin/k8/k8 --postaltjs /user/bin/bwa-0.7.15/bwakit/bwa-postalt.js -out_folder output --alt
 ```
-### Enable local indel realignment
-To use the local indel realignment step, you must provide the **path to the GATK jar file**, the **GATK bundle folder**, AND add the ***--indel_realignment* option**, as well as satisfy the requirements above mentionned. For example:
-```bash
-nextflow run iarcbioinfo/alignment-nf --GATK_bundle GATKbundle/hg19 --input_folder input --fasta_ref reference/hg19.fa --GATK_folder /user/bin7GATK-3.6-0 --out_folder output --indel_realignment
-```
 
 ### Enable base quality score recalibration
-To use the base quality score recalibration step, you must provide the **path to the GATK jar file**, the **GATK bundle folder**, a **bed file**, AND add the ***--recalibration* option**, as well as satisfy the requirements above mentionned. For example:
+To use the base quality score recalibration step, you must provide the **path to 2 GATK bundle VCF files** with lists of known snps and indels, respectively, AND add the ***--recalibration* option**, as well as satisfy the requirements above mentionned. For example:
 ```bash
-nextflow run iarcbioinfo/alignment-nf --GATK_bundle GATKbundle/hg19 --input_folder input --fasta_ref reference/hg19.fa --GATK_folder /user/bin7GATK-3.6-0 --intervals reference/hg19_intervals.bed --out_folder output --recalibration
+nextflow run iarcbioinfo/alignment-nf --snp_vcf GATKbundle/dbsnp.vcf.gz --input_folder input --fasta_ref reference/hg19.fa --GATK_folder /user/bin7GATK-3.6-0 --intervals reference/hg19_intervals.bed --out_folder output --recalibration
 ```
 
 ## Output 
   | Type      | Description     |
   |-----------|---------------|
-  | file.bam    | BAM files of alignments or realignments |
-  | file.bam.bai    | BAI files of alignments or realignments |
-  | file_target_intervals.list    | list of intervals used  |
-  | file_recal.table | table of scores before recalibration   |
-  | file_post_recal.table   | table of scores after recalibration |
-  | file_recalibration_plots.pdf   |  before/after recalibration plots   |
-
+  | BAM/    | folder with BAM and BAI files of alignments or realignments |
+  | QC/multiqc_qualimap_flagstat_report.html  | multiQC report for qualimap and samtools flagstat (duplicates) |
+  | QC/multiqc_qualimap_flagstat_report_data  | data used for the multiQC report |
+  | QC/BAM/*recal*   | GATK base quality score recalibration outputs |
+  | QC/BAM/*recal*   | GATK base quality score recalibration outputs |
+  
 ## Directed Acyclic Graph
 [![DAG](dag.png)](http://htmlpreview.github.io/?https://github.com/IARCbioinfo/alignment-nf/blob/dev/dag.html)
+
+## FAQ
+### Why did Indel realignment disappear from version 1.0?
+Indel realignment was removed following new GATK best practices for pre-processing.
 
 ## Contributions
 
