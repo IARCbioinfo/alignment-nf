@@ -7,7 +7,7 @@ dependencies:
   - qualimap=2.2.2b
   - samtools=1.9
   - sambamba=0.6.8
-  - samblaster=0.1.2a4
+  - samblaster=0.1.24
   - bwa=0.7.17
   - bwakit=0.7.15
-  - gatkj4=4.0.12.0
+  - gatk4=4.0.12.0
