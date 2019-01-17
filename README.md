@@ -111,10 +111,11 @@ nextflow run iarcbioinfo/alignment-nf --snp_vcf GATKbundle/dbsnp.vcf.gz --input_
   | Type      | Description     |
   |-----------|---------------|
   | BAM/    | folder with BAM and BAI files of alignments or realignments |
-  | QC/multiqc_qualimap_flagstat_report.html  | multiQC report for qualimap and samtools flagstat (duplicates) |
-  | QC/multiqc_qualimap_flagstat_report_data  | data used for the multiQC report |
-  | QC/BAM/*recal*   | GATK base quality score recalibration outputs |
-  | QC/BAM/*recal*   | GATK base quality score recalibration outputs |
+  | QC/qualimap/multiqc_qualimap_flagstat_report.html  | multiQC report for qualimap and samtools flagstat (duplicates) |
+  | QC/qualimap/multiqc_qualimap_flagstat_report_data  | data used for the multiQC report |
+  | QC/qualimap/file_BQSRecalibrated.stats.txt  | qualimap summary file |
+  | QC/qualimap/file_BQSRecalibrated/  | qualimap files |
+  | QC/BAM/BQSR/  | GATK base quality score recalibration outputs (tables and pdf comparing scores before/after recalibration)|
   
 ## Directed Acyclic Graph
 [![DAG](dag.png)](http://htmlpreview.github.io/?https://github.com/IARCbioinfo/alignment-nf/blob/dev/dag.html)
