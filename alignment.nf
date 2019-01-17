@@ -28,8 +28,6 @@ params.output_folder = "."
 params.bed          = ""
 params.snp_vcf      = "dbsnp.vcf"
 params.indel_vcf    = "Mills_1000G_indels.vcf"
-params.GATK_folder  = "."
-params.dbsnp_version= "146"
 params.postaltjs    = "bwa-postalt.js"
 params.feature_file = 'NO_FILE'
 params.recalibration = null
@@ -58,33 +56,34 @@ if (params.help) {
     log.info 'nextflow run iarcbioinfo/alignment.nf [-with-docker] --input_folder input/ --ref hg19.fasta [OPTIONS]'
     log.info ''
     log.info 'Mandatory arguments:'
-    log.info '--input_folder   FOLDER                  Folder containing BAM or fastq files to be aligned.'
-    log.info '--ref          FILE                    Reference fasta file (with index).'
-    log.info '--output_folder     STRING                Output folder (default: results_alignment).'
+    log.info '--input_folder   FOLDER              Folder containing BAM or fastq files to be aligned.'
+    log.info '--ref            FILE                Reference fasta file (with index).'
     log.info ""
     log.info 'Optional arguments:'
-    log.info '    --cpu          INTEGER                 Number of cpu used by bwa mem and sambamba (default: 8).'
-    log.info '    --mem          INTEGER                 Size of memory used for alignment (in GB) (default: 32).'
-    log.info '    --mem_sambamba          INTEGER                 Size of memory used by sambamba (in GB) (default: 1).'
-    log.info '    --RG           STRING                  Samtools read group specification with "\t" between fields.'
-    log.info '                                           e.g. --RG "PL:ILLUMINA\tDS:custom_read_group".'
-    log.info '                                           Default: "PL:ILLUMINA".'
-    log.info '    --fastq_ext      STRING                Extension of fastq files (default : fastq.gz)'
-    log.info '    --bed        STRING                bed file with interval list'
-    log.info '    --GATK_bundle        STRING                path to GATK bundle files (default : .)'
-    log.info '    --GATK_folder        STRING                path to GATK GenomeAnalysisTK.jar file (default : .)'
-    log.info '    --js        STRING                path to javascript interpreter k8'
-    log.info '    --postaltjs        STRING                path to postalignment javascript bwa-postalt.js'
+    log.info '--input_file     STRING              Input file (comma-separated) with 3 columns:'
+    log.info '                                     sample name, read_group_ID, and file path.'
+    log.info '--output_folder  STRING              Output folder (default: .).'
+    log.info '--cpu            INTEGER             Number of cpu used by bwa mem and sambamba (default: 8).'
+    log.info '--mem            INTEGER             Size of memory used for alignment (in GB) (default: 32).'
+    log.info '--RG             STRING              Samtools read group specification with "\t" between fields.'
+    log.info '                                         e.g. --RG "PL:ILLUMINA\tDS:custom_read_group".'
+    log.info '                                         Default: "PL:ILLUMINA".'
+    log.info '--fastq_ext      STRING              Extension of fastq files (default : fastq.gz)'
+    log.info '--bed            STRING              bed file with interval list'
+    log.info '--snp_vcf        STRING              path to SNP VCF from GATK bundle (default : .)'
+    log.info '--indel_vcf      STRING              path to indel VCF from GATK bundle (default : .)'
+    log.info '--postaltjs      STRING              path to postalignment javascript bwa-postalt.js'
     log.info ""
     log.info "Flags:"
-    log.info '--trim                    enable adapter sequence trimming'
-    log.info '--recalibration                    performs base quality score recalibration (GATK)'
-    log.info '--alt                    enable alternative contig handling (for reference genome hg38)'
+    log.info '--trim                               enable adapter sequence trimming'
+    log.info '--recalibration                      performs base quality score recalibration (GATK)'
+    log.info '--alt                                enable alternative contig handling (for reference genome hg38)'
     log.info ''
     exit 0
 }else {
   /* Software information */
   log.info "input_folder=${params.input_folder}"
+  log.info "input_file=${params.input_file}"
   log.info "ref=${params.ref}"
   log.info "cpu=${params.cpu}"
   log.info "mem=${params.mem}"
@@ -92,8 +91,8 @@ if (params.help) {
   log.info "fastq_ext=${params.fastq_ext}"
   log.info "output_folder=${params.output_folder}"
   log.info "bed=${params.bed}"
-  log.info "GATK_bundle=${params.GATK_bundle}"
-  log.info "GATK_folder=${params.GATK_folder}"
+  log.info "snp_vcf=${params.snp_vcf}"
+  log.info "indel_vcf=${params.indel_vcf}"
   log.info "postaltjs=${params.postaltjs}"
   log.info "recalibration=${params.recalibration}"
   log.info "alt=${params.alt}"
@@ -110,6 +109,7 @@ ref_ann = file( params.ref+'.ann' )
 ref_amb = file( params.ref+'.amb' )
 ref_pac = file( params.ref+'.pac' )
 ref_alt = file( params.ref+'.alt' )
+ref_dict= file( params.ref.replaceFirst(/fasta/, "").replaceFirst(/fa/, "") +'dict')
 postaltjs = file( params.postaltjs )
 
 //get know site VCFs from GATK bundle
@@ -200,7 +200,7 @@ if(mode=='bam'){
 	sort_mem     = params.mem.intdiv(4)
 	'''
         set -o pipefail
-        samtools collate -uOn 128 !{file_tag}.bam tmp_!{file_tag} | samtools fastq - | !{preproc} bwa mem !{ignorealt} -M -t!{bwa_threads} -R "@RG\\tID:!{file_tag}\\tSM:!{file_tag}\\t!{params.RG}" -p !{params.ref} - | !{postalt} samblaster -M --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
+        samtools collate -uOn 128 !{file_tag}.bam tmp_!{file_tag} | samtools fastq - | !{preproc} bwa mem !{ignorealt} -M -t!{bwa_threads} -R "@RG\\tID:!{file_tag}\\tSM:!{file_tag}\\t!{params.RG}" -p !{ref} - | !{postalt} samblaster -M --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
         '''
     }
 }
@@ -261,12 +261,12 @@ if(mode=='fastq'){
 	if(params.trim==null){
 		'''
         	set -o pipefail
-		bwa mem !{ignorealt} -M -t!{bwa_threads} -R "@RG\\tID:!{file_tag}.!{read_group}\\tSM:!{file_tag}\\t!{params.RG}" !{params.ref} !{pair[0]} !{pair[1]} | !{postalt} samblaster -M --addMateTags | !{compsort}
+		bwa mem !{ignorealt} -M -t!{bwa_threads} -R "@RG\\tID:!{file_tag}.!{read_group}\\tSM:!{file_tag}\\t!{params.RG}" !{ref} !{pair[0]} !{pair[1]} | !{postalt} samblaster -M --addMateTags | !{compsort}
 		'''
  	}else{
 		'''
         	set -o pipefail
-		AdapterRemoval --file1 !{pair[0]} --file2 !{pair[1]} --interleaved-output --output1 /dev/stdout | bwa mem !{ignorealt} -M -t!{bwa_threads} -R "@RG\\tID:!{file_tag}.!{read_group}\\tSM:!{file_tag}\\t!{params.RG}" -p !{params.ref} - | !{postalt} samblaster -M --addMateTags | !{compsort}
+		AdapterRemoval --file1 !{pair[0]} --file2 !{pair[1]} --interleaved-output --output1 /dev/stdout | bwa mem !{ignorealt} -M -t!{bwa_threads} -R "@RG\\tID:!{file_tag}.!{read_group}\\tSM:!{file_tag}\\t!{params.RG}" -p !{ref} - | !{postalt} samblaster -M --addMateTags | !{compsort}
 		'''
 	}
 	
@@ -389,6 +389,9 @@ println "BQSR"
     file known_snps_index
     file known_indels
     file known_indels_index
+    file ref
+    file ref_fai
+    file ref_dict
 
     output:
     file("*_recal.table") into recal_table_files
@@ -398,9 +401,9 @@ println "BQSR"
     shell:
     file_tag_new=file_tag+'_BQSRecalibrated'
     '''
-    gatk BaseRecalibrator --java-options "-Xmx!{params.mem}G" -R !{params.ref} -I !{file_tag}.bam --known-sites !{known_snps} --known-sites !{known_indels} -O !{file_tag}_recal.table
-    gatk ApplyBQSR --java-options "-Xmx!{params.mem}G" -R !{params.ref} -I !{file_tag}.bam --bqsr-recal-file !{file_tag}_recal.table -O !{file_tag_new}.bam
-    gatk BaseRecalibrator --java-options "-Xmx!{params.mem}G" -R !{params.ref} -I !{file_tag}.bam --known-sites !{known_snps} --known-sites !{known_indels} -O !{file_tag_new}_recal.table		
+    gatk BaseRecalibrator --java-options "-Xmx!{params.mem}G" -R !{ref} -I !{file_tag}.bam --known-sites !{known_snps} --known-sites !{known_indels} -O !{file_tag}_recal.table
+    gatk ApplyBQSR --java-options "-Xmx!{params.mem}G" -R !{ref} -I !{file_tag}.bam --bqsr-recal-file !{file_tag}_recal.table -O !{file_tag_new}.bam
+    gatk BaseRecalibrator --java-options "-Xmx!{params.mem}G" -R !{ref} -I !{file_tag}.bam --known-sites !{known_snps} --known-sites !{known_indels} -O !{file_tag_new}_recal.table		
     gatk AnalyzeCovariates --java-options "-Xmx!{params.mem}G" -before !{file_tag}_recal.table -after !{file_tag_new}_recal.table -plots !{file_tag_new}_recalibration_plots.pdf	
     mv !{file_tag_new}.bai !{file_tag_new}.bam.bai
     '''
