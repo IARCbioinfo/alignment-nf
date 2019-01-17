@@ -3,6 +3,8 @@ channels:
   - conda-forge
   - bioconda
 dependencies:
+  - fontconfig > 2 
+  - font-ttf-dejavu-sans-mono > 2
   - multiqc=1.7
   - qualimap=2.2.2b
   - samtools=1.9
