@@ -70,8 +70,8 @@ if (params.help) {
     log.info '                                         Default: "PL:ILLUMINA".'
     log.info '--fastq_ext      STRING              Extension of fastq files (default : fastq.gz)'
     log.info '--bed            STRING              bed file with interval list'
-    log.info '--snp_vcf        STRING              path to SNP VCF from GATK bundle (default : .)'
-    log.info '--indel_vcf      STRING              path to indel VCF from GATK bundle (default : .)'
+    log.info '--snp_vcf        STRING              path to SNP VCF from GATK bundle (default : dbsnp.vcf)'
+    log.info '--indel_vcf      STRING              path to indel VCF from GATK bundle (default : Mills_1000G_indels.vcf)'
     log.info '--postaltjs      STRING              path to postalignment javascript bwa-postalt.js'
     log.info ""
     log.info "Flags:"
@@ -286,7 +286,7 @@ if(params.input_file){
 	    memory params.mem+'G'
 	    tag { "${file_tag}_${read_group}" }
 
-	    publishDir "${params.output_folder}/QC/BAM/", mode: 'copy'
+	    publishDir "${params.output_folder}/QC/BAM/qualimap/", mode: 'copy'
 
 	    input:
 	    set val(file_tag), val(nb_rgs), val(read_group),  file(bambai) from mult2QC
@@ -310,7 +310,7 @@ if(params.input_file){
 	    cpus 1
 	    memory '100M'
 
-	    publishDir "${params.output_folder}/QC", mode: 'copy'
+	    publishDir "${params.output_folder}/QC/BAM/qualimap", mode: 'copy'
 
 	    input:
 	    file qualimap_results from qualimap_multi_results.collect()
@@ -376,7 +376,7 @@ println "BQSR"
     tag { file_tag }
     
     publishDir "$params.output_folder/BAM/", mode: 'copy', pattern: "*bam*"
-    publishDir "$params.output_folder/QC/BAM/", mode: 'copy',
+    publishDir "$params.output_folder/QC/BAM/BQSR/", mode: 'copy',
 	saveAs: {filename -> 
 		if (filename.indexOf("table") > 0) "$filename"
 		else if (filename.indexOf("plots") > 0) "$filename"
@@ -419,7 +419,7 @@ process qualimap_final {
     memory params.mem+'G'
     tag { file_tag }
 
-    publishDir "${params.output_folder}/QC/BAM/", mode: 'copy'
+    publishDir "${params.output_folder}/QC/BAM/qualimap/", mode: 'copy'
 
     input:
     set val(file_tag), file(bam), file(bai) from final_bam_bai_files
@@ -428,7 +428,6 @@ process qualimap_final {
     output:
     file ("${file_tag}") into qualimap_results
     file ("${file_tag}.stats.txt") into flagstat_results
-    //file ("*.bam*") into bams
 
     shell:
     feature = qff.name != 'NO_FILE' ? "--feature-file $qff" : ''
@@ -442,7 +441,7 @@ process multiqc_final {
     cpus 1
     memory '100M'
 
-    publishDir "${params.output_folder}/QC", mode: 'copy'
+    publishDir "${params.output_folder}/QC/BAM/qualimap/", mode: 'copy'
 
     input:
     file qualimap_results from qualimap_results.collect()
