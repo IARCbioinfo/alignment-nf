@@ -14,3 +14,4 @@ dependencies:
   - bwakit=0.7.15
   - gatk4=4.0.12.0
   - r-ggplot2=3.1.0
+  - r-gplots=3.0.1
