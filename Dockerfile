@@ -22,7 +22,7 @@ MAINTAINER **nalcala** <**alcalan@fellows.iarc.fr**>
 ################## INSTALLATION ######################
 COPY environment.yml /
 RUN conda env update -n root -f /environment.yml && conda clean -a
-RUN ln -s ~/bin/miniconda2/pkgs/bwakit-0.7.17-1/share/bwakit-0.7.17-1/k8 ~/bin/.
+RUN ln -s ~/bin/miniconda2/pkgs/bwakit-0.7.17-1/share/bwakit-0.7.17-1/k8 /usr/local/bin/.
 
 #RUN mkdir -p /var/cache/apt/archives/partial && \
 #	touch /var/cache/apt/archives/lock && \
