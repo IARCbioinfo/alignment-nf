@@ -1,5 +1,5 @@
 # Set the base image to Debian
-FROM nfcore/base #debian:jessie
+FROM nfcore/base
 
 # METADATA
 
