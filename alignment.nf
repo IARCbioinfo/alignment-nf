@@ -441,7 +441,7 @@ process multiqc_final {
     cpus 1
     memory '200M'
 
-    publishDir "${params.output_folder}/QC/BAM/qualimap/", mode: 'copy'
+    publishDir "${params.output_folder}/QC/BAM/", mode: 'copy'
 
     input:
     file qualimap_results from qualimap_results.collect()
@@ -450,11 +450,11 @@ process multiqc_final {
 
     output:
     file("*report.html") into final_output
-    file("multiqc_qualimap_flagstat_report_data/") into final_output_data
+    file("multiqc_qualimap_flagstat_BQSR_report_data/") into final_output_data
 
     shell:
     '''
-    multiqc . -n multiqc_qualimap_flagstat_report.html
+    multiqc . -n multiqc_qualimap_flagstat_BQSR_report.html
     '''
 }
 
