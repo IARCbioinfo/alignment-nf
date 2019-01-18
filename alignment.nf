@@ -410,8 +410,8 @@ println "BQSR"
     }
 }else{
 	final_bam_bai_files = bam_bai_files
+	recal_table_files = Channel.from ( 'NOFILE1', 'NOFILE2' )
 }
-
 
 
 process qualimap_final {
