@@ -308,7 +308,7 @@ if(params.input_file){
 
 	process multiqc_multi {
 	    cpus 1
-	    memory '100M'
+	    memory '200M'
 
 	    publishDir "${params.output_folder}/QC/BAM/qualimap", mode: 'copy'
 
@@ -439,13 +439,14 @@ process qualimap_final {
 
 process multiqc_final {
     cpus 1
-    memory '100M'
+    memory '200M'
 
     publishDir "${params.output_folder}/QC/BAM/qualimap/", mode: 'copy'
 
     input:
     file qualimap_results from qualimap_results.collect()
     file flagstat_results from flagstat_results.collect()
+    file BQSR_results from recal_table_files.collect()
 
     output:
     file("*report.html") into final_output
