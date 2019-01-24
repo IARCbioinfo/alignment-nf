@@ -34,6 +34,8 @@ params.recalibration = null
 params.help         = null
 params.alt          = null
 params.trim         = null
+params.mem_BQSR     = 10
+params.cpu_BQSR     = 2
 
 
 log.info ""
@@ -371,8 +373,8 @@ println "BQSR"
 
 // base quality score recalibration
    process base_quality_score_recalibration {
-    cpus params.cpu
-    memory params.mem+'G'
+    cpus params.cpu_BQSR
+    memory params.mem_BQSR+'G'
     tag { file_tag }
     
     publishDir "$params.output_folder/BAM/", mode: 'copy', pattern: "*bam*"
@@ -401,10 +403,10 @@ println "BQSR"
     shell:
     file_tag_new=file_tag+'_BQSRecalibrated'
     '''
-    gatk BaseRecalibrator --java-options "-Xmx!{params.mem}G" -R !{ref} -I !{file_tag}.bam --known-sites !{known_snps} --known-sites !{known_indels} -O !{file_tag}_recal.table
-    gatk ApplyBQSR --java-options "-Xmx!{params.mem}G" -R !{ref} -I !{file_tag}.bam --bqsr-recal-file !{file_tag}_recal.table -O !{file_tag_new}.bam
-    gatk BaseRecalibrator --java-options "-Xmx!{params.mem}G" -R !{ref} -I !{file_tag}.bam --known-sites !{known_snps} --known-sites !{known_indels} -O !{file_tag_new}_recal.table		
-    gatk AnalyzeCovariates --java-options "-Xmx!{params.mem}G" -before !{file_tag}_recal.table -after !{file_tag_new}_recal.table -plots !{file_tag_new}_recalibration_plots.pdf	
+    gatk BaseRecalibrator --java-options "-Xmx!{params.mem}_BQSRG" -R !{ref} -I !{file_tag}.bam --known-sites !{known_snps} --known-sites !{known_indels} -O !{file_tag}_recal.table
+    gatk ApplyBQSR --java-options "-Xmx!{params.mem_BQSR}G" -R !{ref} -I !{file_tag}.bam --bqsr-recal-file !{file_tag}_recal.table -O !{file_tag_new}.bam
+    gatk BaseRecalibrator --java-options "-Xmx!{params.mem_BQSR}G" -R !{ref} -I !{file_tag}.bam --known-sites !{known_snps} --known-sites !{known_indels} -O !{file_tag_new}_recal.table		
+    gatk AnalyzeCovariates --java-options "-Xmx!{params.mem_BQSR}G" -before !{file_tag}_recal.table -after !{file_tag_new}_recal.table -plots !{file_tag_new}_recalibration_plots.pdf	
     mv !{file_tag_new}.bai !{file_tag_new}.bam.bai
     '''
     }
