@@ -5,6 +5,8 @@ channels:
 dependencies:
   - fontconfig > 2 
   - font-ttf-dejavu-sans-mono > 2
+  - r-base
+  - r-essentials
   - multiqc=1.7
   - qualimap=2.2.2b
   - samtools=1.9
