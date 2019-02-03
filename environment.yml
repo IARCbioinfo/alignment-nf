@@ -2,6 +2,7 @@ name: alignment
 channels:
   - conda-forge
   - bioconda
+  - defaults
 dependencies:
   - fontconfig > 2 
   - font-ttf-dejavu-sans-mono > 2
