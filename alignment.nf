@@ -309,8 +309,8 @@ if(params.input_file){
 	}
 
 	process multiqc_multi {
-	    cpus 1
-	    memory '200M'
+	    cpus 2
+	    memory '1G'
 
 	    publishDir "${params.output_folder}/QC/BAM/qualimap", mode: 'copy'
 
@@ -405,7 +405,7 @@ println "BQSR"
     '''
     gatk BaseRecalibrator --java-options "-Xmx!{params.mem_BQSR}G" -R !{ref} -I !{file_tag}.bam --known-sites !{known_snps} --known-sites !{known_indels} -O !{file_tag}_recal.table
     gatk ApplyBQSR --java-options "-Xmx!{params.mem_BQSR}G" -R !{ref} -I !{file_tag}.bam --bqsr-recal-file !{file_tag}_recal.table -O !{file_tag_new}.bam
-    gatk BaseRecalibrator --java-options "-Xmx!{params.mem_BQSR}G" -R !{ref} -I !{file_tag}.bam --known-sites !{known_snps} --known-sites !{known_indels} -O !{file_tag_new}_recal.table		
+    gatk BaseRecalibrator --java-options "-Xmx!{params.mem_BQSR}G" -R !{ref} -I !{file_tag_new}.bam --known-sites !{known_snps} --known-sites !{known_indels} -O !{file_tag_new}_recal.table		
     gatk AnalyzeCovariates --java-options "-Xmx!{params.mem_BQSR}G" -before !{file_tag}_recal.table -after !{file_tag_new}_recal.table -plots !{file_tag_new}_recalibration_plots.pdf	
     mv !{file_tag_new}.bai !{file_tag_new}.bam.bai
     '''
@@ -440,8 +440,8 @@ process qualimap_final {
 }
 
 process multiqc_final {
-    cpus 1
-    memory '200M'
+    cpus 2
+    memory '1G'
 
     publishDir "${params.output_folder}/QC/BAM/", mode: 'copy'
 
