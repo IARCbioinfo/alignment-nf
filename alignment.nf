@@ -17,7 +17,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-params.input_folder = '.'
+params.input_folder = null
 params.input_file   = null
 params.ref          = 'hg19.fasta'
 params.cpu          = 8
@@ -114,6 +114,8 @@ ref_alt = file( params.ref+'.alt' )
 ref_dict= file( params.ref.replaceFirst(/fasta/, "").replaceFirst(/fa/, "") +'dict')
 postaltjs = file( params.postaltjs )
 
+println ref
+
 //get know site VCFs from GATK bundle
 known_snps         = file( params.snp_vcf )
 known_snps_index   = file( params.snp_vcf+'.tbi' )
@@ -142,11 +144,11 @@ if(params.input_file){
 }else{
    if (file(params.input_folder).listFiles().findAll { it.name ==~ /.*${params.fastq_ext}/ }.size() > 0){
     	println "fastq files found, proceed with alignment"
-	readPairs = Channel.fromFilePairs("${params.input_folder}/*_{1,2}*.${params.fastq_ext}")
-			   .map { row -> tuple(row[0] , "" , row[1][0], row[1][1]) }
-	Channel.fromFilePairs("${params.input_folder}/*{1,2}*.${params.fastq_ext}")
-                           .map { row -> tuple(row[0] , "" , row[1][0], row[1][1]) }
-			   .subscribe { row -> println "${row}" }
+	readPairs = Channel.fromFilePairs("${params.input_folder}/*_{1,2}.${params.fastq_ext}")
+			   .map { row -> [ row[0] , 1 , row[0] , row[1][0], row[1][1] ] }
+	//Channel.fromFilePairs("${params.input_folder}/*{1,2}*.${params.fastq_ext}")
+        //                   .map { row -> tuple(row[0] , 1 , row[0] , row[1][0], row[1][1]) }
+	//		   .subscribe { row -> println "${row}" }
    }else{
     	if (file(params.input_folder).listFiles().findAll { it.name ==~ /.*bam/ }.size() > 0){
         	println "BAM files found, proceed with realignment"; mode ='bam'; files = Channel.fromPath( params.input_folder+'/*.bam' )
@@ -364,6 +366,8 @@ if(params.input_file){
 
 	bam_bai_files=single_bam.map { row -> tuple(row[0],row[3][0],row[3][1] ) }
 			.concat(bam_bai_merged)
+}else{
+	bam_bai_files = bam_bai_files0.map { row -> tuple(row[0],row[3][0],row[3][1] ) }
 }
 
 if(params.recalibration){
@@ -441,7 +445,7 @@ process qualimap_final {
 
 process multiqc_final {
     cpus 2
-    memory '1G'
+    memory '2G'
 
     publishDir "${params.output_folder}/QC/BAM/", mode: 'copy'
 
