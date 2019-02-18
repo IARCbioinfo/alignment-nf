@@ -178,7 +178,7 @@ if(mode=='bam'){
 	file ref_alt
      
         output:
-	set val(file_tag_new), file("${file_tag_new}.bam"), file("${file_tag_new}.bam.bai")  into bam_bai_files
+	set val(file_tag_new), val(1), val("RG"), file("${file_tag_new}*.bam*")  into bam_bai_files0
 
         shell:
 	file_tag = infile.baseName
