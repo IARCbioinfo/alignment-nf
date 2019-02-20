@@ -176,6 +176,7 @@ if(mode=='bam'){
 	file ref_amb
 	file ref_pac
 	file ref_alt
+	file postaltjs
      
         output:
 	set val(file_tag_new), val(1), val("RG"), file("${file_tag_new}*.bam*")  into bam_bai_files0
