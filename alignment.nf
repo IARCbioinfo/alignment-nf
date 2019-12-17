@@ -36,6 +36,7 @@ params.alt          = null
 params.trim         = null
 params.mem_BQSR     = 10
 params.cpu_BQSR     = 2
+params.bwa_option_M  = null
 
 
 log.info ""
@@ -146,9 +147,6 @@ if(params.input_file){
     	println "fastq files found, proceed with alignment"
 	readPairs = Channel.fromFilePairs("${params.input_folder}/*_{1,2}.${params.fastq_ext}")
 			   .map { row -> [ row[0] , 1 , row[0] , row[1][0], row[1][1] ] }
-	//Channel.fromFilePairs("${params.input_folder}/*{1,2}*.${params.fastq_ext}")
-        //                   .map { row -> tuple(row[0] , 1 , row[0] , row[1][0], row[1][1]) }
-	//		   .subscribe { row -> println "${row}" }
    }else{
     	if (file(params.input_folder).listFiles().findAll { it.name ==~ /.*bam/ }.size() > 0){
         	println "BAM files found, proceed with realignment"; mode ='bam'; files = Channel.fromPath( params.input_folder+'/*.bam' )
@@ -200,12 +198,19 @@ if(mode=='bam'){
 	  	
 	  preproc='AdapterRemoval --interleaved --file1 /dev/stdin --output1 /dev/stdout |'
 	}
+	if(params.bwa_option_M==null){
+	  bwa_opt=''
+    	  samblaster_opt=''
+	}else{
+	   bwa_opt='-M '
+ 	   samblaster_opt='-M '
+	}
 	bwa_threads  = params.cpu.intdiv(2) - 1
 	sort_threads = params.cpu.intdiv(2) - 1
 	sort_mem     = params.mem.intdiv(4)
 	'''
         set -o pipefail
-        samtools collate -uOn 128 !{file_tag}.bam tmp_!{file_tag} | samtools fastq - | !{preproc} bwa mem !{ignorealt} -M -t!{bwa_threads} -R "@RG\\tID:!{file_tag}\\tSM:!{file_tag}\\t!{params.RG}" -p !{ref} - | !{postalt} samblaster -M --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
+        samtools collate -uOn 128 !{file_tag}.bam tmp_!{file_tag} | samtools fastq - | !{preproc} bwa mem !{ignorealt} !{bwa_opt} -t!{bwa_threads} -R "@RG\\tID:!{file_tag}\\tSM:!{file_tag}\\t!{params.RG}" -p !{ref} - | !{postalt} samblaster !{samblaster_opt} --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
         '''
     }
 }
@@ -263,6 +268,13 @@ if(mode=='fastq'){
           ignorealt=''
           postalt='k8 bwa-postalt.js '+params.ref+'.alt |'
         }
+	if(params.bwa_option_M==null){
+          bwa_opt=''
+          samblaster_opt=''
+        }else{
+           bwa_opt='-M '
+           samblaster_opt='-M '
+        }
 	if(params.trim==null){
 		'''
         	set -o pipefail
@@ -271,7 +283,7 @@ if(mode=='fastq'){
  	}else{
 		'''
         	set -o pipefail
-		AdapterRemoval --file1 !{pair[0]} --file2 !{pair[1]} --interleaved-output --output1 /dev/stdout | bwa mem !{ignorealt} -M -t!{bwa_threads} -R "@RG\\tID:!{file_tag}.!{read_group}\\tSM:!{file_tag}\\t!{params.RG}" -p !{ref} - | !{postalt} samblaster -M --addMateTags | !{compsort}
+		AdapterRemoval --file1 !{pair[0]} --file2 !{pair[1]} --interleaved-output --output1 /dev/stdout | bwa mem !{ignorealt} !{bwa_opt} -t!{bwa_threads} -R "@RG\\tID:!{file_tag}.!{read_group}\\tSM:!{file_tag}\\t!{params.RG}" -p !{ref} - | !{postalt} samblaster !{samblaster_opt} --addMateTags | !{compsort}
 		'''
 	}
 	
