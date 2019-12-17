@@ -84,6 +84,7 @@ Flags are special parameters without value.
 |--trim     | enable adapter sequence trimming|
 |--recalibration  | perform quality score recalibration (GATK)|
 |--alt         | enable alternative contig handling (for reference genome hg38)|
+|--bwa_option_M  | Trigger the -M option in bwa and the corresponding compatibility option in samblaster (marks shorter split hits as secondary) |
 
 ## Usage
 ```bash
