@@ -130,7 +130,7 @@ Indel realignment was removed following new GATK best practices for pre-processi
   | Name      | Email | Description     |
   |-----------|---------------|-----------------| 
   | Nicolas Alcala*    | AlcalaN@fellows.iarc.fr    | Developer to contact for support |
-  | Catherine Voegele    |     VoegeleC@iarc.fr | Developer |
+  | Catherine Voegele    |     VoegeleC@iarc.fr | Tester |
   | Vincent Cahais | CahaisV@iarc.fr | Tester |
   | Alexis Robitaille | RobitailleA@students.iarc.fr | Tester |
   
