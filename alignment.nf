@@ -71,16 +71,17 @@ if (params.help) {
     log.info '--RG             STRING              Samtools read group specification with "\t" between fields.'
     log.info '                                         e.g. --RG "PL:ILLUMINA\tDS:custom_read_group".'
     log.info '                                         Default: "PL:ILLUMINA".'
-    log.info '--fastq_ext      STRING              Extension of fastq files (default : fastq.gz)'
-    log.info '--bed            STRING              bed file with interval list'
-    log.info '--snp_vcf        STRING              path to SNP VCF from GATK bundle (default : dbsnp.vcf)'
-    log.info '--indel_vcf      STRING              path to indel VCF from GATK bundle (default : Mills_1000G_indels.vcf)'
-    log.info '--postaltjs      STRING              path to postalignment javascript bwa-postalt.js'
+    log.info '--fastq_ext      STRING              Extension of fastq files (default: fastq.gz)'
+    log.info '--bed            STRING              Bed file with interval list'
+    log.info '--snp_vcf        STRING              Path to SNP VCF from GATK bundle (default: dbsnp.vcf)'
+    log.info '--indel_vcf      STRING              Path to indel VCF from GATK bundle (default: Mills_1000G_indels.vcf)'
+    log.info '--postaltjs      STRING              Path to postalignment javascript bwa-postalt.js'
     log.info ""
     log.info "Flags:"
-    log.info '--trim                               enable adapter sequence trimming'
-    log.info '--recalibration                      performs base quality score recalibration (GATK)'
-    log.info '--alt                                enable alternative contig handling (for reference genome hg38)'
+    log.info '--trim                               Enable adapter sequence trimming'
+    log.info '--recalibration                      Performs base quality score recalibration (GATK)'
+    log.info '--alt                                Enable alternative contig handling (for reference genome hg38)'
+    log.info '--bwa_option_M                       Trigger the -M option in bwa and the corresponding compatibility option in samblaster'
     log.info ''
     exit 0
 }else {
@@ -100,6 +101,7 @@ if (params.help) {
   log.info "recalibration=${params.recalibration}"
   log.info "alt=${params.alt}"
   log.info "trim=${params.trim}"
+  log.info "bwa_option_M=${params.bwa_option_M}"
   log.info "help=${params.help}"
 }
 
