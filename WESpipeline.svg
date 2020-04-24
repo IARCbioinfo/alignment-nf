@@ -13,10 +13,14 @@
    version="1.1"
    id="svg2"
    inkscape:version="0.91 r13725"
+<<<<<<< HEAD
    sodipodi:docname="WESpipeline.svg"
    inkscape:export-filename="/data_alcalan/alignment-nf/WESpipeline.png"
    inkscape:export-xdpi="300"
    inkscape:export-ydpi="300">
+=======
+   sodipodi:docname="WESpipeline.svg">
+>>>>>>> master
   <sodipodi:namedview
      pagecolor="#ffffff"
      bordercolor="#666666"
@@ -26,20 +30,34 @@
      guidetolerance="10"
      inkscape:pageopacity="0"
      inkscape:pageshadow="2"
+<<<<<<< HEAD
      inkscape:window-width="2560"
      inkscape:window-height="1376"
+=======
+     inkscape:window-width="1954"
+     inkscape:window-height="1011"
+>>>>>>> master
      id="namedview132"
      showgrid="false"
      fit-margin-top="0"
      fit-margin-left="0"
      fit-margin-right="0"
      fit-margin-bottom="0"
+<<<<<<< HEAD
      inkscape:zoom="0.33194736"
      inkscape:cx="1173.1422"
      inkscape:cy="1355.4272"
      inkscape:window-x="0"
      inkscape:window-y="27"
      inkscape:window-maximized="1"
+=======
+     inkscape:zoom="0.23472223"
+     inkscape:cx="-172.53798"
+     inkscape:cy="1185.5722"
+     inkscape:window-x="225"
+     inkscape:window-y="87"
+     inkscape:window-maximized="0"
+>>>>>>> master
      inkscape:current-layer="svg2" />
   <metadata
      id="metadata134">
