@@ -1,0 +1,21 @@
+name: alignment
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - fontconfig > 2 
+  - font-ttf-dejavu-sans-mono > 2
+  - r-base
+  - r-essentials
+  - multiqc=1.7
+  - qualimap=2.2.2b
+  - samtools=1.9
+  - sambamba=0.6.8
+  - samblaster=0.1.24
+  - bwa=0.7.17
+  - bwakit=0.7.15
+  - gatk4=4.0.12.0
+  - r-ggplot2=3.1.0
+  - r-gplots=3.0.1
+  - r-gsalib=2.1.0
