@@ -1,7 +1,5 @@
 #! /usr/bin/env nextflow
 
-/*vim: syntax=groovy -*- mode: groovy;-*- */
-
 // Copyright (C) 2017 IARC/WHO
 
 // This program is free software: you can redistribute it and/or modify
@@ -30,18 +28,18 @@ params.snp_vcf      = "dbsnp.vcf"
 params.indel_vcf    = "Mills_1000G_indels.vcf"
 params.postaltjs    = "bwa-postalt.js"
 params.feature_file = 'NO_FILE'
+params.mem_BQSR     = 10
+params.cpu_BQSR     = 2
+params.bwa_option_M  = null
 params.recalibration = null
 params.help         = null
 params.alt          = null
 params.trim         = null
-params.mem_BQSR     = 10
-params.cpu_BQSR     = 2
-params.bwa_option_M  = null
 
 
 log.info ""
 log.info "--------------------------------------------------------"
-log.info "  alignment-nf 2.0.0: alignment/realignment workflow for whole exome/whole genome sequencing "
+log.info "  alignment-nf 1.1.0: alignment/realignment workflow for whole exome/whole genome sequencing "
 log.info "--------------------------------------------------------"
 log.info "Copyright (C) IARC/WHO"
 log.info "This program comes with ABSOLUTELY NO WARRANTY; for details see LICENSE"
@@ -76,6 +74,9 @@ if (params.help) {
     log.info '--snp_vcf        STRING              Path to SNP VCF from GATK bundle (default: dbsnp.vcf)'
     log.info '--indel_vcf      STRING              Path to indel VCF from GATK bundle (default: Mills_1000G_indels.vcf)'
     log.info '--postaltjs      STRING              Path to postalignment javascript bwa-postalt.js'
+    log.info '--feature_file   STRING              Path to feature file for qualimap (default: NO_FILE)'
+    log.info '--mem_BQSR       INTEGER             Size of memory used for GATK BQSR (in GB) (default: 10)'
+    log.info '--cpu_BQSR       INTEGER             Number of cpu used by GATK BQSR (default: 2)'
     log.info ""
     log.info "Flags:"
     log.info '--trim                               Enable adapter sequence trimming'
@@ -98,6 +99,9 @@ if (params.help) {
   log.info "snp_vcf=${params.snp_vcf}"
   log.info "indel_vcf=${params.indel_vcf}"
   log.info "postaltjs=${params.postaltjs}"
+  log.info "feature_file=${params.feature_file}"
+  log.info "mem_BQSR=${params.mem_BQSR}"
+  log.info "cpu_BQSR=${params.cpu_BQSR}"
   log.info "recalibration=${params.recalibration}"
   log.info "alt=${params.alt}"
   log.info "trim=${params.trim}"
@@ -249,8 +253,6 @@ if(mode=='fastq'){
         shell:
 	pair = [pair1,pair2]
 	file_tag_new=file_tag 
-	//+"_${read_group}"
-	println file_tag_new
 	bwa_threads  = params.cpu.intdiv(2) - 1
         sort_threads = params.cpu.intdiv(2) - 1
         sort_mem     = params.mem.intdiv(4)
@@ -288,7 +290,6 @@ if(mode=='fastq'){
 		AdapterRemoval --file1 !{pair[0]} --file2 !{pair[1]} --interleaved-output --output1 /dev/stdout | bwa mem !{ignorealt} !{bwa_opt} -t!{bwa_threads} -R "@RG\\tID:!{file_tag}.!{read_group}\\tSM:!{file_tag}\\t!{params.RG}" -p !{ref} - | !{postalt} samblaster !{samblaster_opt} --addMateTags | !{compsort}
 		'''
 	}
-	
      }
 }
 
@@ -321,7 +322,7 @@ if(params.input_file){
 	    '''
 	    sambamba sort -t !{params.cpu} -m !{params.mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag}_!{read_group}_COsorted.bam !{bam}
 	    qualimap bamqc -nt !{params.cpu} !{feature} --skip-duplicated -bam !{file_tag}_!{read_group}_COsorted.bam --java-mem-size=!{params.mem}G -outdir !{file_tag}_!{read_group} -outformat html
-	    samtools flagstat !{bam} > !{file_tag}_!{read_group}.stats.txt
+	    sambamba flagstat -t !{params.cpu} !{bam} > !{file_tag}_!{read_group}.stats.txt
 	    '''
 	}
 
@@ -387,8 +388,6 @@ if(params.input_file){
 
 if(params.recalibration){
 println "BQSR"
-//( bam_bai_files2print, bam_bai_files2ex ) = bam_bai_files.into( 2 )
-//bam_bai_files2print.subscribe { row -> println "${row}" }
 
 // base quality score recalibration
    process base_quality_score_recalibration {
@@ -454,7 +453,7 @@ process qualimap_final {
     feature = qff.name != 'NO_FILE' ? "--feature-file $qff" : ''
     '''
     qualimap bamqc -nt !{params.cpu} !{feature} --skip-duplicated -bam !{bam} --java-mem-size=!{params.mem}G -outdir !{file_tag} -outformat html
-    samtools flagstat !{bam} > !{file_tag}.stats.txt
+    sambamba flagstat -t !{params.cpu} !{bam} > !{file_tag}.stats.txt
     '''
 }
 
