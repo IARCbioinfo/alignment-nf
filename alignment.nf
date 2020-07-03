@@ -32,6 +32,7 @@ params.postaltjs    = "bwa-postalt.js"
 params.feature_file = 'NO_FILE'
 params.mem_BQSR     = 10
 params.cpu_BQSR     = 2
+params.multiqc_config = 'NO_FILE'
 params.bwa_option_M  = null
 params.recalibration = null
 params.help         = null
@@ -81,6 +82,7 @@ if (params.help) {
     log.info '--feature_file   STRING              Path to feature file for qualimap (default: NO_FILE)'
     log.info '--mem_BQSR       INTEGER             Size of memory used for GATK BQSR (in GB) (default: 10)'
     log.info '--cpu_BQSR       INTEGER             Number of cpu used by GATK BQSR (default: 2)'
+    log.info '--multiqc_config STRING              Config yaml file for multiqc (default : none)'
     log.info ""
     log.info "Flags:"
     log.info '--trim                               Enable adapter sequence trimming'
@@ -108,12 +110,16 @@ if (params.help) {
   log.info "feature_file=${params.feature_file}"
   log.info "mem_BQSR=${params.mem_BQSR}"
   log.info "cpu_BQSR=${params.cpu_BQSR}"
+  log.info "multiqc_config=${params.multiqc_config}"
   log.info "recalibration=${params.recalibration}"
   log.info "alt=${params.alt}"
   log.info "trim=${params.trim}"
   log.info "bwa_option_M=${params.bwa_option_M}"
   log.info "help=${params.help}"
 }
+
+//multiqc config file
+ch_config_for_multiqc = file(params.multiqc_config)
 
 //read files
 ref = file(params.ref)
@@ -339,28 +345,25 @@ if(params.input_file){
 	    input:
 	    file qualimap_results from qualimap_multi_results.collect()
 	    file flagstat_results from flagstat_multi_results.collect()
+            file multiqc_config from ch_config_for_multiqc    
 
 	    output:
 	    file("*report.html") into multi_output
 	    file("multiqc_multiplex_qualimap_flagstat_report_data/") into multi_output_data
 
 	    shell:
+            if( multiqc_config.name=='NO_FILE' ){
+                opt = ""
+            }else{
+                opt = "--config ${multiqc_config}"
+            }
 	    '''
-	    multiqc . -n multiqc_multiplex_qualimap_flagstat_report.html
+	    multiqc . -n multiqc_multiplex_qualimap_flagstat_report.html !{opt} --comment "WGS/WES pre-merging QC report"
 	    '''
 	}
 
-	//merge runs
-	//nmult = mult2count.toList().size() //count().subscribe{ print "$it" }
-	//println nmult
-	//if( nmult >0 ){
-		//println "BAMs from multiple runs detected"
 		bam2merge = multiple_bam.groupTuple(by: 0)
 			 .map { row -> tuple(row[0] , row[1][0] , row[2], row[3][0] , row[3][1] , null ,  null  ) }
-	//}else{
-	//	println "No BAMs from multiple runs detected"
-	//	bam2merge = Channel.create()	
-	//}
 
 	process merge {
             cpus params.cpu
@@ -471,24 +474,19 @@ process multiqc_final {
     file qualimap_results from qualimap_results.collect()
     file flagstat_results from flagstat_results.collect()
     file BQSR_results from recal_table_files.collect()
+    file multiqc_config from ch_config_for_multiqc
 
     output:
     file("*report.html") into final_output
     file("multiqc_qualimap_flagstat_BQSR_report_data/") into final_output_data
 
     shell:
+    if( multiqc_config.name=='NO_FILE' ){
+	opt = ""
+    }else{
+	opt = "--config ${multiqc_config}"
+    }
     '''
-    multiqc . -n multiqc_qualimap_flagstat_BQSR_report.html
+    multiqc . -n multiqc_qualimap_flagstat_BQSR_report.html !{opt} --comment "WGS/WES final QC report"
     '''
-}
-
-// Display completion message
-workflow.onComplete {
-  log.info "N E X T F L O W  ~  version ${workflow.nextflow.version} ${workflow.nextflow.build}"
-  //log.info "iarcbioinfo/alignment-nf ~ " + this.grabRevision() + (workflow.commitId ? " [${workflow.commitId}]" : "")
-  log.info "Completed at: " + workflow.complete
-  log.info "Duration    : " + workflow.duration
-  log.info "Success     : " + workflow.success
-  log.info "Exit status : " + workflow.exitStatus
-  log.info "Error report: " + (workflow.errorReport ?: '-')
 }
