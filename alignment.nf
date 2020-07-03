@@ -22,6 +22,8 @@ params.cpu          = 8
 params.mem          = 32
 params.RG           = "PL:ILLUMINA"
 params.fastq_ext    = "fastq.gz"
+params.suffix1      = "_1"
+params.suffix2      = "_2"
 params.output_folder = "."
 params.bed          = ""
 params.snp_vcf      = "dbsnp.vcf"
@@ -70,6 +72,8 @@ if (params.help) {
     log.info '                                         e.g. --RG "PL:ILLUMINA\tDS:custom_read_group".'
     log.info '                                         Default: "PL:ILLUMINA".'
     log.info '--fastq_ext      STRING              Extension of fastq files (default: fastq.gz)'
+    log.info '--suffix1        STRING              Suffix of fastq files 1 (default : _1)'
+    log.info '--suffix2        STRING              Suffix of fastq files 2 (default : _2)'
     log.info '--bed            STRING              Bed file with interval list'
     log.info '--snp_vcf        STRING              Path to SNP VCF from GATK bundle (default: dbsnp.vcf)'
     log.info '--indel_vcf      STRING              Path to indel VCF from GATK bundle (default: Mills_1000G_indels.vcf)'
@@ -94,6 +98,8 @@ if (params.help) {
   log.info "mem=${params.mem}"
   log.info "RG=${params.RG}"
   log.info "fastq_ext=${params.fastq_ext}"
+  log.info "suffix1= ${params.suffix1}"
+  log.info "suffix2= ${params.suffix2}"
   log.info "output_folder=${params.output_folder}"
   log.info "bed=${params.bed}"
   log.info "snp_vcf=${params.snp_vcf}"
@@ -120,8 +126,6 @@ ref_pac = file( params.ref+'.pac' )
 ref_alt = file( params.ref+'.alt' )
 ref_dict= file( params.ref.replaceFirst(/fasta/, "").replaceFirst(/fa/, "") +'dict')
 postaltjs = file( params.postaltjs )
-
-println ref
 
 //get know site VCFs from GATK bundle
 known_snps         = file( params.snp_vcf )
@@ -151,7 +155,7 @@ if(params.input_file){
 }else{
    if (file(params.input_folder).listFiles().findAll { it.name ==~ /.*${params.fastq_ext}/ }.size() > 0){
     	println "fastq files found, proceed with alignment"
-	readPairs = Channel.fromFilePairs("${params.input_folder}/*_{1,2}.${params.fastq_ext}")
+	readPairs = Channel.fromFilePairs(params.input_folder +"/*{${params.suffix1},${params.suffix2}}" +'.'+ params.fastq_ext)
 			   .map { row -> [ row[0] , 1 , row[0] , row[1][0], row[1][1] ] }
    }else{
     	if (file(params.input_folder).listFiles().findAll { it.name ==~ /.*bam/ }.size() > 0){
