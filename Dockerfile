@@ -22,4 +22,5 @@ MAINTAINER **nalcala** <**alcalan@fellows.iarc.fr**>
 COPY environment.yml /
 RUN apt-get update && apt-get install -y procps && apt-get clean -y
 RUN conda env create -n alignment-nf -f /environment.yml && conda clean -a
+RUN ln -s /opt/conda/pkgs/bwakit-0.7.15-1/share/bwakit-0.7.15-1/k8 /usr/local/bin/.
 ENV PATH /opt/conda/envs/alignment-nf/bin:$PATH
