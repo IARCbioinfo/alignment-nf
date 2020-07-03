@@ -73,7 +73,7 @@ Nextflow pipeline to perform BAM realignment or fastq alignment and QC, with/wit
 |--indel_vcf  | Mills_1000G_indels.vcf | path to indel VCF from GATK bundle (default : Mills_1000G_indels.vcf) |
 |--postaltjs    | bwa-postalt.js" | path to postalignment javascript *bwa-postalt.js*|
 |--feature_file  | null |    Path to feature file for qualimap |
-
+|--multiqc_config   |  null | config yaml file for multiqc | 
 
 * #### Flags
 
