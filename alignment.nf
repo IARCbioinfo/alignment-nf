@@ -43,7 +43,7 @@ params.trim         = null
 
 log.info ""
 log.info "--------------------------------------------------------"
-log.info "  alignment-nf 1.1.0: alignment/realignment workflow for whole exome/whole genome sequencing "
+log.info "  alignment-nf 1.2.0: alignment/realignment workflow for whole exome/whole genome sequencing "
 log.info "--------------------------------------------------------"
 log.info "Copyright (C) IARC/WHO"
 log.info "This program comes with ABSOLUTELY NO WARRANTY; for details see LICENSE"
@@ -128,28 +128,27 @@ if (params.help) {
 ch_config_for_multiqc = file(params.multiqc_config)
 
 //read files
-ref_fasta = file(params.ref)
-ref_fai = file( params.ref+'.fai' )
-ref_sa  = file( params.ref+'.sa' )
-ref_bwt = file( params.ref+'.bwt' )
-ref_ann = file( params.ref+'.ann' )
-ref_amb = file( params.ref+'.amb' )
-ref_pac = file( params.ref+'.pac' )
-ref_dict= file( params.ref.replaceFirst(/fasta/, "").replaceFirst(/fa/, "") +'dict')
+ref     = file(params.ref)
+ref_fai = file(params.ref+'.fai')
+ref_sa  = file(params.ref+'.sa')
+ref_bwt =  file(params.ref+'.bwt')
+ref_ann =  file(params.ref+'.ann')
+ref_amb =  file(params.ref+'.amb')
+ref_pac =  file(params.ref+'.pac')
+ref_dict=  file(params.ref.replaceFirst(/fasta/, "").replaceFirst(/fa/, "") +'dict')
 if(params.bwa_mem!="bwa-mem2 mem"){
-  ref0 = ref_fasta.concat( ref_fai,ref_sa,ref_bwt,ref_ann,ref_amb,ref_pac,ref_dict)
+  ref_0123 = file('NO_0123')
+  ref_bwt8bit = file('NO_bwt8bit')
 }else{
-  ref_0123 = file( params.ref+'.0123' )
-  ref_bwt2bit = file( params.ref+'.bwt.2bit.64' )
-  ref_bwt8bit = file( params.ref+'.bwt.8bit.32' )
-  ref0 = ref_fasta.concat( ref_fai,ref_sa,ref_bwt,ref_ann,ref_amb,ref_pac,ref_dict,ref_0123,ref_bwt2bit,ref_bwt8bit)
+  ref_0123 = file(params.ref+'.0123')
+  //ref_bwt2bit = params.ref+'.bwt.2bit.64'
+  ref_bwt8bit = file(params.ref+'.bwt.8bit.32')
 }
 //bwa-mem2 files
 if(params.alt){
-  ref_alt = file( params.ref+'.alt' )
-  ref = ref0.concat(ref_alt)
+  ref_alt = file(params.ref+'.alt')
 }else{
-  ref = ref0
+  ref_alt = file('NO_ALT')
 }
 postaltjs = file( params.postaltjs )
 
@@ -199,7 +198,15 @@ if(mode=='bam'){
 
 	input:
   file infile from files
-	file ref from ref.collect()
+	file ref
+  file ref_sa
+  file ref_bwt
+  file ref_ann
+  file ref_amb
+  file ref_pac
+  file ref_0123
+  file ref_bwt8bit
+  file ref_alt 
 	file postaltjs
      
   output:
@@ -216,7 +223,7 @@ if(mode=='bam'){
 	  postalt=''
 	}else{
 	  ignorealt=''
-	  postalt='k8 bwa-postalt.js '+ref[0]+'.alt |'
+	  postalt='k8 bwa-postalt.js '+ref+'.alt |'
 	}
 	if(params.trim==null){
 	  preproc=''
@@ -235,7 +242,7 @@ if(mode=='bam'){
 	sort_mem     = params.mem.div(4)
 	'''
   set -o pipefail
-  samtools collate -uOn 128 !{file_tag}.bam tmp_!{file_tag} | samtools fastq - | !{preproc} !{params.bwa_mem} !{ignorealt} !{bwa_opt} -t!{bwa_threads} -R "@RG\\tID:!{file_tag}\\tSM:!{file_tag}\\t!{params.RG}" -p !{ref[0]} - | !{postalt} samblaster !{samblaster_opt} --addMateTags --ignoreUnmated | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
+  samtools collate -uOn 128 !{file_tag}.bam tmp_!{file_tag} | samtools fastq - | !{preproc} !{params.bwa_mem} !{ignorealt} !{bwa_opt} -t!{bwa_threads} -R "@RG\\tID:!{file_tag}\\tSM:!{file_tag}\\t!{params.RG}" -p !{ref} - | !{postalt} samblaster !{samblaster_opt} --addMateTags --ignoreUnmated | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
   '''
   }
 }
@@ -248,7 +255,17 @@ if(mode!='bam'){
 
   input:
   set val(file_tag), val(nb_groups), val(read_group), file(pair1), file(pair2) from readPairs
-  file ref from ref.collect()
+  file ref
+  file ref_fai
+  file ref_sa
+  file ref_bwt
+  file ref_ann
+  file ref_amb
+  file ref_pac
+  file ref_dict
+  file ref_0123
+  file ref_bwt8bit
+  file ref_alt 
 	file postaltjs
                  
   output:
@@ -269,7 +286,7 @@ if(mode!='bam'){
           postalt=''
   }else{
           ignorealt=''
-          postalt='k8 bwa-postalt.js '+ref[0]+'.alt |'
+          postalt='k8 bwa-postalt.js '+ref+'.alt |'
   }
 	if(params.bwa_option_M==null){
           bwa_opt=''
@@ -287,13 +304,13 @@ if(mode!='bam'){
 		'''
     set -o pipefail
     touch !{file_tag_new}.bam.bai
-		!{params.bwa_mem} !{ignorealt} !{bwa_opt} -t!{bwa_threads} -R "@RG\\tID:!{file_tag}!{read_group}\\tSM:!{file_tag}\\t!{params.RG}" !{ref[0]} !{pair1} !{pair2} | !{postalt} samblaster !{samblaster_opt} --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort !{sort_opt} -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
+		!{params.bwa_mem} !{ignorealt} !{bwa_opt} -t!{bwa_threads} -R "@RG\\tID:!{file_tag}!{read_group}\\tSM:!{file_tag}\\t!{params.RG}" !{ref} !{pair1} !{pair2} | !{postalt} samblaster !{samblaster_opt} --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort !{sort_opt} -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
 		'''
  	}else{
 		'''
     set -o pipefail
     touch !{file_tag_new}.bam.bai
-		AdapterRemoval !{params.adapterremoval_opt} --file1 !{pair1} --file2 !{pair2} --interleaved-output --output1 /dev/stdout | !{params.bwa_mem} !{ignorealt} !{bwa_opt} -t!{bwa_threads} -R "@RG\\tID:!{file_tag}!{read_group}\\tSM:!{file_tag}\\t!{params.RG}" -p !{ref[0]} - | !{postalt} samblaster !{samblaster_opt} --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort !{sort_opt} -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
+		AdapterRemoval !{params.adapterremoval_opt} --file1 !{pair1} --file2 !{pair2} --interleaved-output --output1 /dev/stdout | !{params.bwa_mem} !{ignorealt} !{bwa_opt} -t!{bwa_threads} -R "@RG\\tID:!{file_tag}!{read_group}\\tSM:!{file_tag}\\t!{params.RG}" -p !{ref} - | !{postalt} samblaster !{samblaster_opt} --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort !{sort_opt} -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
 		'''
 	}
      }
@@ -426,7 +443,9 @@ println "BQSR"
     file known_snps_index
     file known_indels
     file known_indels_index
-    file ref from ref.collect()
+    file ref
+    file ref_fai
+    file ref_dict
 
     output:
     file("*_recal.table") into recal_table_files
@@ -437,9 +456,9 @@ println "BQSR"
     file_name=bam.baseName
     file_tag_new=file_name+'_BQSRecalibrated'
     '''
-    gatk BaseRecalibrator --java-options "-Xmx!{params.mem_BQSR}G" -R !{ref[0]} -I !{bam} --known-sites !{known_snps} --known-sites !{known_indels} -O !{file_name}_recal.table
-    gatk ApplyBQSR --java-options "-Xmx!{params.mem_BQSR}G" -R !{ref[0]} -I !{bam} --bqsr-recal-file !{file_name}_recal.table -O !{file_tag_new}.bam
-    gatk BaseRecalibrator --java-options "-Xmx!{params.mem_BQSR}G" -R !{[ref[0]]} -I !{file_tag_new}.bam --known-sites !{known_snps} --known-sites !{known_indels} -O !{file_tag_new}_recal.table		
+    gatk BaseRecalibrator --java-options "-Xmx!{params.mem_BQSR}G" -R !{ref} -I !{bam} --known-sites !{known_snps} --known-sites !{known_indels} -O !{file_name}_recal.table
+    gatk ApplyBQSR --java-options "-Xmx!{params.mem_BQSR}G" -R !{ref} -I !{bam} --bqsr-recal-file !{file_name}_recal.table -O !{file_tag_new}.bam
+    gatk BaseRecalibrator --java-options "-Xmx!{params.mem_BQSR}G" -R !{ref} -I !{file_tag_new}.bam --known-sites !{known_snps} --known-sites !{known_indels} -O !{file_tag_new}_recal.table		
     gatk AnalyzeCovariates --java-options "-Xmx!{params.mem_BQSR}G" -before !{file_name}_recal.table -after !{file_tag_new}_recal.table -plots !{file_tag_new}_recalibration_plots.pdf	
     mv !{file_tag_new}.bai !{file_tag_new}.bam.bai
     '''
