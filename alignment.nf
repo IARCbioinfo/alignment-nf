@@ -216,7 +216,7 @@ if(mode=='bam'){
 	if(params.trim==null){
 	  preproc=''
 	}else{
-	  preproc='AdapterRemoval !{params.adapterremoval_opt} --interleaved --file1 /dev/stdin --output1 /dev/stdout |'
+	  preproc="AdapterRemoval ${params.adapterremoval_opt} --interleaved --file1 /dev/stdin --output1 /dev/stdout |"
 	}
 	if(params.bwa_option_M==null){
 	  bwa_opt=''
