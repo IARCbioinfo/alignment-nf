@@ -33,6 +33,7 @@ params.feature_file = 'NO_FILE'
 params.mem_BQSR     = 10
 params.cpu_BQSR     = 2
 params.multiqc_config = 'NO_FILE'
+params.adapterremoval_opt = ""
 params.bwa_option_M  = null
 params.recalibration = null
 params.help         = null
@@ -84,6 +85,7 @@ if (params.help) {
     log.info '--mem_BQSR       INTEGER             Size of memory used for GATK BQSR (in GB) (default: 10)'
     log.info '--cpu_BQSR       INTEGER             Number of cpu used by GATK BQSR (default: 2)'
     log.info '--multiqc_config STRING              Config yaml file for multiqc (default : none)'
+    log.info '--adapterremoval_opt STRING          Command line options for AdapterRemoval (default : none)'
     log.info ""
     log.info "Flags:"
     log.info '--trim                               Enable adapter sequence trimming'
@@ -112,6 +114,7 @@ if (params.help) {
   log.info "mem_BQSR=${params.mem_BQSR}"
   log.info "cpu_BQSR=${params.cpu_BQSR}"
   log.info "multiqc_config=${params.multiqc_config}"
+  log.info "adapterremoval_opt=${params.adapterremoval_opt}"
   log.info "recalibration=${params.recalibration}"
   log.info "alt=${params.alt}"
   log.info "trim=${params.trim}"
@@ -160,7 +163,6 @@ Channel.fromPath("${params.input_file}")
 	readPairs = readPairsgrouped.map{ a -> [a[0],a[1]] }
                             .cross( readPairs0 )
                             .map{a -> [a[1][0],a[0][1],a[1][1],a[1][2],a[1][3] ] }
-                            .view()
 }else{
    if (file(params.input_folder).listFiles().findAll { it.name ==~ /.*${params.fastq_ext}/ }.size() > 0){
     	println "fastq files found, proceed with alignment"
@@ -214,7 +216,7 @@ if(mode=='bam'){
 	if(params.trim==null){
 	  preproc=''
 	}else{
-	  preproc='AdapterRemoval --interleaved --file1 /dev/stdin --output1 /dev/stdout |'
+	  preproc='AdapterRemoval !{params.adapterremoval_opt} --interleaved --file1 /dev/stdin --output1 /dev/stdout |'
 	}
 	if(params.bwa_option_M==null){
 	  bwa_opt=''
@@ -293,24 +295,19 @@ if(mode!='bam'){
 		'''
     set -o pipefail
     touch !{file_tag_new}.bam.bai
-		AdapterRemoval --file1 !{pair1} --file2 !{pair2} --interleaved-output --output1 /dev/stdout | bwa mem !{ignorealt} !{bwa_opt} -t!{bwa_threads} -R "@RG\\tID:!{file_tag}!{read_group}\\tSM:!{file_tag}\\t!{params.RG}" -p !{ref} - | !{postalt} samblaster !{samblaster_opt} --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort !{sort_opt} -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
+		AdapterRemoval !{params.adapterremoval_opt} --file1 !{pair1} --file2 !{pair2} --interleaved-output --output1 /dev/stdout | bwa mem !{ignorealt} !{bwa_opt} -t!{bwa_threads} -R "@RG\\tID:!{file_tag}!{read_group}\\tSM:!{file_tag}\\t!{params.RG}" -p !{ref} - | !{postalt} samblaster !{samblaster_opt} --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort !{sort_opt} -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
 		'''
 	}
      }
 }
 
 if(params.input_file){
-	//mult2QC = Channel.create()
   bam_bai_files0.into{bam_bai_2group;bam_bai_files2filter}
   bam_bai_grouped4merge = bam_bai_2group.groupTuple(by: 0)
 	                                      .map{ a -> [a[0],a[2].size(),a[2],a[3],a[4]] }
-    //                               .into(2)
+
 	bam_bai_files2filter.filter { a -> a[1] > 1  }
-                      .set{mult2QC}//.into(2)
-                            //.map{ a -> [a[0],a[1]]}
-                            //.cross( bam_bai_files2 )
-                            //.map{a -> [a[1][0],a[0][1],a[1][1],a[1][2],a[1][3] ] }
-                            //.view()
+                      .set{mult2QC}
 	
 	//QC on each run
 	process qualimap_multi {
@@ -406,9 +403,6 @@ if(params.input_file){
         '''
       }
 	}
-
-	//bam_bai_files=bam_bai_files_merged.map { row -> tuple(row[0],row[3],row[4] ) }
-	//		                    .concat(bam_bai_merged)
 }
 
 if(params.recalibration){

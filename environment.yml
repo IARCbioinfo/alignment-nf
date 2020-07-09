@@ -18,3 +18,4 @@ dependencies:
   - r-ggplot2=3.3.2
   - r-gplots=3.0.3
   - r-gsalib=2.1.0
+  - adapterremoval=2.3.1
