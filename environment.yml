@@ -5,7 +5,7 @@ channels:
   - defaults
 dependencies:
   - font-ttf-dejavu-sans-mono=2.37
-  - gatk4=4.1.8.0
+  - gatk4=4.1.7.0
   - multiqc=1.9
   - qualimap=2.2.2d
   - sambamba=0.7.1
