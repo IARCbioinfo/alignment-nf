@@ -58,7 +58,7 @@ Nextflow pipeline to perform BAM realignment or fastq alignment and QC, with/wit
 
 | Name | Default value | Description |
 |-----------|--------------|-------------| 
-|--input_file   | null | Input file (comma-separated) with 3 columns: sample name, read_group_ID, and file path. |
+|--input_file   | null | Input file (comma-separated) with 4 columns: SM (sample name), RG (read group ID), pair1 (first fastq of the pair), and pair2 (second fastq of the pair). |
 |--output_folder   | . | Output folder for aligned BAMs|
 |--cpu          | 8 | number of CPUs |
 |--cpu\_BQSR | 2 | number of CPUs for GATK base quality score recalibration |
@@ -74,6 +74,7 @@ Nextflow pipeline to perform BAM realignment or fastq alignment and QC, with/wit
 |--postaltjs    | bwa-postalt.js" | path to postalignment javascript *bwa-postalt.js*|
 |--feature_file  | null |    Path to feature file for qualimap |
 |--multiqc_config   |  null | config yaml file for multiqc | 
+|--adapterremoval_opt   |  null | Command line options for AdapterRemoval | 
 
 * #### Flags
 
