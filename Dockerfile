@@ -23,4 +23,6 @@ COPY environment.yml /
 RUN apt-get update && apt-get install -y procps && apt-get clean -y
 RUN conda env create -n alignment-nf -f /environment.yml && conda clean -a
 RUN ln -s /opt/conda/pkgs/bwakit-0.7.15-1/share/bwakit-0.7.15-1/k8 /usr/local/bin/.
+RUN curl -L https://github.com/bwa-mem2/bwa-mem2/releases/download/v2.0/bwa-mem2-2.0_x64-linux.tar.bz2 | tar jxf - && \
+    cp bwa-mem2-2.0_x64-linux/bwa-mem2 /usr/local/bin/.
 ENV PATH /opt/conda/envs/alignment-nf/bin:$PATH
