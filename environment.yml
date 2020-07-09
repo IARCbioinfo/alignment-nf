@@ -4,18 +4,18 @@ channels:
   - bioconda
   - defaults
 dependencies:
-  - fontconfig > 2 
-  - font-ttf-dejavu-sans-mono > 2
-  - r-base
-  - r-essentials
-  - multiqc=1.7
-  - qualimap=2.2.2b
-  - samtools=1.9
-  - sambamba=0.6.8
-  - samblaster=0.1.24
+  - font-ttf-dejavu-sans-mono=2.37
+  - gatk4=4.1.7.0
+  - multiqc=1.9
+  - qualimap=2.2.2d
+  - sambamba=0.7.1
+  - samtools=1.9 #1.10 conflicts with sambamba 0.7.1
+  - samblaster=0.1.26
   - bwa=0.7.17
   - bwakit=0.7.15
-  - gatk4=4.0.12.0
-  - r-ggplot2=3.1.0
-  - r-gplots=3.0.1
+  - r-data.table=1.12.8
+  - r-dplyr=1.0.0
+  - r-ggplot2=3.3.2
+  - r-gplots=3.0.3
   - r-gsalib=2.1.0
+  - adapterremoval=2.3.1
