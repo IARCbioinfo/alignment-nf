@@ -34,16 +34,16 @@ params.mem_BQSR     = 10
 params.cpu_BQSR     = 2
 params.multiqc_config = 'NO_FILE'
 params.adapterremoval_opt = ""
+params.bwa_mem      = "bwa-mem2 mem"
 params.bwa_option_M  = null
 params.recalibration = null
 params.help         = null
 params.alt          = null
 params.trim         = null
 
-
 log.info ""
 log.info "--------------------------------------------------------"
-log.info "  alignment-nf 1.1.0: alignment/realignment workflow for whole exome/whole genome sequencing "
+log.info "  alignment-nf 1.2.0: alignment/realignment workflow for whole exome/whole genome sequencing "
 log.info "--------------------------------------------------------"
 log.info "Copyright (C) IARC/WHO"
 log.info "This program comes with ABSOLUTELY NO WARRANTY; for details see LICENSE"
@@ -86,6 +86,7 @@ if (params.help) {
     log.info '--cpu_BQSR       INTEGER             Number of cpu used by GATK BQSR (default: 2)'
     log.info '--multiqc_config STRING              Config yaml file for multiqc (default : none)'
     log.info '--adapterremoval_opt STRING          Command line options for AdapterRemoval (default : none)'
+    log.info '--bwa_mem        STRING              bwa-mem command (default: "bwa-mem2 mem", alternative is "bwa mem")'
     log.info ""
     log.info "Flags:"
     log.info '--trim                               Enable adapter sequence trimming'
@@ -114,6 +115,7 @@ if (params.help) {
   log.info "mem_BQSR=${params.mem_BQSR}"
   log.info "cpu_BQSR=${params.cpu_BQSR}"
   log.info "multiqc_config=${params.multiqc_config}"
+  log.info "bwa_mem=${params.bwa_mem}"
   log.info "adapterremoval_opt=${params.adapterremoval_opt}"
   log.info "recalibration=${params.recalibration}"
   log.info "alt=${params.alt}"
@@ -126,18 +128,27 @@ if (params.help) {
 ch_config_for_multiqc = file(params.multiqc_config)
 
 //read files
-ref = file(params.ref)
-ref_fai = file( params.ref+'.fai' )
-ref_sa = file( params.ref+'.sa' )
-ref_bwt = file( params.ref+'.bwt' )
-ref_ann = file( params.ref+'.ann' )
-ref_amb = file( params.ref+'.amb' )
-ref_pac = file( params.ref+'.pac' )
-ref_dict= file( params.ref.replaceFirst(/fasta/, "").replaceFirst(/fa/, "") +'dict')
-if(params.alt){
-  ref_alt = file( params.ref+'.alt' )
+ref     = file(params.ref)
+ref_fai = file(params.ref+'.fai')
+ref_sa  = file(params.ref+'.sa')
+ref_bwt =  file(params.ref+'.bwt')
+ref_ann =  file(params.ref+'.ann')
+ref_amb =  file(params.ref+'.amb')
+ref_pac =  file(params.ref+'.pac')
+ref_dict=  file(params.ref.replaceFirst(/fasta/, "").replaceFirst(/fa/, "") +'dict')
+if(params.bwa_mem!="bwa-mem2 mem"){
+  ref_0123 = file('NO_0123')
+  ref_bwt8bit = file('NO_bwt8bit')
 }else{
-  ref_alt = file( 'NO_ALT_FILE' )
+  ref_0123 = file(params.ref+'.0123')
+  //ref_bwt2bit = params.ref+'.bwt.2bit.64'
+  ref_bwt8bit = file(params.ref+'.bwt.8bit.32')
+}
+//bwa-mem2 files
+if(params.alt){
+  ref_alt = file(params.ref+'.alt')
+}else{
+  ref_alt = file('NO_ALT')
 }
 postaltjs = file( params.postaltjs )
 
@@ -188,13 +199,14 @@ if(mode=='bam'){
 	input:
   file infile from files
 	file ref
-	file ref_fai
-	file ref_sa
-	file ref_bwt
-	file ref_ann
-	file ref_amb
-	file ref_pac
-	file ref_alt
+  file ref_sa
+  file ref_bwt
+  file ref_ann
+  file ref_amb
+  file ref_pac
+  file ref_0123
+  file ref_bwt8bit
+  file ref_alt 
 	file postaltjs
      
   output:
@@ -230,7 +242,7 @@ if(mode=='bam'){
 	sort_mem     = params.mem.div(4)
 	'''
   set -o pipefail
-  samtools collate -uOn 128 !{file_tag}.bam tmp_!{file_tag} | samtools fastq - | !{preproc} bwa mem !{ignorealt} !{bwa_opt} -t!{bwa_threads} -R "@RG\\tID:!{file_tag}\\tSM:!{file_tag}\\t!{params.RG}" -p !{ref} - | !{postalt} samblaster !{samblaster_opt} --addMateTags --ignoreUnmated | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
+  samtools collate -uOn 128 !{file_tag}.bam tmp_!{file_tag} | samtools fastq - | !{preproc} !{params.bwa_mem} !{ignorealt} !{bwa_opt} -t!{bwa_threads} -R "@RG\\tID:!{file_tag}\\tSM:!{file_tag}\\t!{params.RG}" -p !{ref} - | !{postalt} samblaster !{samblaster_opt} --addMateTags --ignoreUnmated | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
   '''
   }
 }
@@ -243,14 +255,17 @@ if(mode!='bam'){
 
   input:
   set val(file_tag), val(nb_groups), val(read_group), file(pair1), file(pair2) from readPairs
-	file ref
-	file ref_fai
-	file ref_sa
-	file ref_bwt
-	file ref_ann
-	file ref_amb
-	file ref_pac
-	file ref_alt
+  file ref
+  file ref_fai
+  file ref_sa
+  file ref_bwt
+  file ref_ann
+  file ref_amb
+  file ref_pac
+  file ref_dict
+  file ref_0123
+  file ref_bwt8bit
+  file ref_alt 
 	file postaltjs
                  
   output:
@@ -289,13 +304,13 @@ if(mode!='bam'){
 		'''
     set -o pipefail
     touch !{file_tag_new}.bam.bai
-		bwa mem !{ignorealt} !{bwa_opt} -t!{bwa_threads} -R "@RG\\tID:!{file_tag}!{read_group}\\tSM:!{file_tag}\\t!{params.RG}" !{ref} !{pair1} !{pair2} | !{postalt} samblaster !{samblaster_opt} --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort !{sort_opt} -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
+		!{params.bwa_mem} !{ignorealt} !{bwa_opt} -t!{bwa_threads} -R "@RG\\tID:!{file_tag}!{read_group}\\tSM:!{file_tag}\\t!{params.RG}" !{ref} !{pair1} !{pair2} | !{postalt} samblaster !{samblaster_opt} --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort !{sort_opt} -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
 		'''
  	}else{
 		'''
     set -o pipefail
     touch !{file_tag_new}.bam.bai
-		AdapterRemoval !{params.adapterremoval_opt} --file1 !{pair1} --file2 !{pair2} --interleaved-output --output1 /dev/stdout | bwa mem !{ignorealt} !{bwa_opt} -t!{bwa_threads} -R "@RG\\tID:!{file_tag}!{read_group}\\tSM:!{file_tag}\\t!{params.RG}" -p !{ref} - | !{postalt} samblaster !{samblaster_opt} --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort !{sort_opt} -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
+		AdapterRemoval !{params.adapterremoval_opt} --file1 !{pair1} --file2 !{pair2} --interleaved-output --output1 /dev/stdout | !{params.bwa_mem} !{ignorealt} !{bwa_opt} -t!{bwa_threads} -R "@RG\\tID:!{file_tag}!{read_group}\\tSM:!{file_tag}\\t!{params.RG}" -p !{ref} - | !{postalt} samblaster !{samblaster_opt} --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort !{sort_opt} -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
 		'''
 	}
      }

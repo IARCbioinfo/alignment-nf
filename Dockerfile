@@ -6,7 +6,7 @@ FROM continuumio/miniconda3:4.7.12
 LABEL base_image="continuumio/miniconda3"
 LABEL version="4.7.12"
 LABEL software="alignment-nf"
-LABEL software.version="1.1"
+LABEL software.version="1.2"
 LABEL about.summary="Container image containing all requirements for alignment-nf"
 LABEL about.home="http://github.com/IARCbioinfo/alignment-nf"
 LABEL about.documentation="http://github.com/IARCbioinfo/alignment-nf/README.md"
@@ -23,4 +23,7 @@ COPY environment.yml /
 RUN apt-get update && apt-get install -y procps && apt-get clean -y
 RUN conda env create -n alignment-nf -f /environment.yml && conda clean -a
 RUN ln -s /opt/conda/pkgs/bwakit-0.7.15-1/share/bwakit-0.7.15-1/k8 /usr/local/bin/.
+RUN wget https://github.com/bwa-mem2/bwa-mem2/releases/download/v2.0/bwa-mem2-2.0_x64-linux.tar.bz2 && \
+    tar jxf bwa-mem2-2.0_x64-linux.tar.bz2 && \
+    cp bwa-mem2-2.0_x64-linux/* /usr/local/bin/.
 ENV PATH /opt/conda/envs/alignment-nf/bin:$PATH
