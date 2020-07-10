@@ -17,7 +17,7 @@ Nextflow pipeline to perform BAM realignment or fastq alignment and QC, with/wit
 1. Nextflow : for common installation procedures see the [IARC-nf](https://github.com/IARCbioinfo/IARC-nf) repository.
 
 ### Basic fastq alignment
-2. [*bwa*](https://github.com/lh3/bwa)
+2. [*bwa2*](https://github.com/bwa-mem2/bwa-mem2) (default) or [*bwa*](https://github.com/lh3/bwa)
 3. [*samblaster*](https://github.com/GregoryFaust/samblaster)
 4. [*sambamba*](https://github.com/lomereiter/sambamba)
 
@@ -75,6 +75,7 @@ Nextflow pipeline to perform BAM realignment or fastq alignment and QC, with/wit
 |--feature_file  | null |    Path to feature file for qualimap |
 |--multiqc_config   |  null | config yaml file for multiqc | 
 |--adapterremoval_opt   |  null | Command line options for AdapterRemoval | 
+|--bwa_mem  | bwa-mem2 mem | bwa-mem command; use "bwa mem" to switch to regular bwa-mem (both are in the docker and singularity containers) |
 
 * #### Flags
 
@@ -89,20 +90,26 @@ Flags are special parameters without value.
 |--bwa_option_M  | Trigger the -M option in bwa and the corresponding compatibility option in samblaster (marks shorter split hits as secondary) |
 
 ## Usage
-
-  
 To run the pipeline on a series of fastq or BAM files in folder *input* and a fasta reference file hg19.fasta, one can type:
   
 ```bash
-nextflow run iarcbioinfo/alignment-nf -r v1.1 -profile singularity  --input_folder input/ --ref hg19.fasta --output_folder output
+nextflow run iarcbioinfo/alignment-nf -r v1.2 -profile singularity  --input_folder input/ --ref hg19.fasta --output_folder output
 ```
 
 To run the pipeline without singularity just remove "-profile singularity". Alternatively, one can run the pipeline using a docker container (-profile docker) the conda receipe containing all required dependencies (-profile conda).
 
+
+### Use bwa-mem instead of bwa-mem2
+To use bwa-mem, one can type:
+  
+```bash
+nextflow run iarcbioinfo/alignment-nf -r v1.2 -profile singularity  --input_folder input/ --ref hg19.fasta --output_folder output --bwa_mem "bwa mem"
+```
+
 ### Enable adapter trimming
 To use the adapter trimming step, you must add the ***--trim* option**, as well as satisfy the requirements above mentionned. For example:
 ```bash
-nextflow run iarcbioinfo/alignment-nf -r v1.1 -profile singularity  --input_folder input/ --ref hg19.fasta --output_folder output --trim
+nextflow run iarcbioinfo/alignment-nf -r v1.2 -profile singularity  --input_folder input/ --ref hg19.fasta --output_folder output --trim
 ```
 
 ### Enable ALT mode
