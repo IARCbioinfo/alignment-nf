@@ -6,7 +6,7 @@ FROM continuumio/miniconda3:4.7.12
 LABEL base_image="continuumio/miniconda3"
 LABEL version="4.7.12"
 LABEL software="alignment-nf"
-LABEL software.version="1.1"
+LABEL software.version="1.2"
 LABEL about.summary="Container image containing all requirements for alignment-nf"
 LABEL about.home="http://github.com/IARCbioinfo/alignment-nf"
 LABEL about.documentation="http://github.com/IARCbioinfo/alignment-nf/README.md"
