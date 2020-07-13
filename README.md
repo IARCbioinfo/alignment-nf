@@ -115,13 +115,13 @@ nextflow run iarcbioinfo/alignment-nf -r v1.2 -profile singularity  --input_fold
 ### Enable ALT mode
 To use the alternative contigs handling mode, you must provide the **path to an ALT aware genome reference** (e.g., hg38) AND add the ***--alt* option**, as well as satisfy the above-mentionned requirements. For example:
 ```bash
-nextflow run iarcbioinfo/alignment-nf -r v1.1 -profile singularity  --input_folder input/ --ref hg19.fasta --output_folder output --postaltjs /user/bin/bwa-0.7.15/bwakit/bwa-postalt.js --alt
+nextflow run iarcbioinfo/alignment-nf -r v1.2 -profile singularity  --input_folder input/ --ref hg19.fasta --output_folder output --postaltjs /user/bin/bwa-0.7.15/bwakit/bwa-postalt.js --alt
 ```
 
 ### Enable base quality score recalibration
 To use the base quality score recalibration step, you must provide the **path to 2 GATK bundle VCF files** with lists of known snps and indels, respectively, AND add the ***--recalibration* option**, as well as satisfy the requirements above mentionned. For example:
 ```bash
-nextflow run iarcbioinfo/alignment-nf -r v1.1 -profile singularity  --input_folder input/ --ref hg19.fasta --output_folder output --snp_vcf GATKbundle/dbsnp.vcf.gz --indel_vcf GATKbundle/Mills_1000G_indels.vcf.gz --recalibration
+nextflow run iarcbioinfo/alignment-nf -r v1.2 -profile singularity  --input_folder input/ --ref hg19.fasta --output_folder output --snp_vcf GATKbundle/dbsnp.vcf.gz --indel_vcf GATKbundle/Mills_1000G_indels.vcf.gz --recalibration
 ```
 
 ## Output 
