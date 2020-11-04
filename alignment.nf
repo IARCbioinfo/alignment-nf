@@ -24,7 +24,7 @@ params.RG           = "PL:ILLUMINA"
 params.fastq_ext    = "fastq.gz"
 params.suffix1      = "_1"
 params.suffix2      = "_2"
-params.output_folder = "."
+params.output_folder = "./results"
 params.bed          = ""
 params.snp_vcf      = "dbsnp.vcf"
 params.indel_vcf    = "Mills_1000G_indels.vcf"
@@ -40,10 +40,14 @@ params.recalibration = null
 params.help         = null
 params.alt          = null
 params.trim         = null
+//new variables
+params.output_type         = "cram" //default output type is cram
+params.cram_ref = null
+params.bazam = "bazam" //save location in the docker or singularity container
 
 log.info ""
 log.info "--------------------------------------------------------"
-log.info "  alignment-nf 1.2.0: alignment/realignment workflow for whole exome/whole genome sequencing "
+log.info "  alignment-nf 1.3.0: alignment/realignment workflow for whole exome/whole genome sequencing "
 log.info "--------------------------------------------------------"
 log.info "Copyright (C) IARC/WHO"
 log.info "This program comes with ABSOLUTELY NO WARRANTY; for details see LICENSE"
@@ -68,6 +72,7 @@ if (params.help) {
     log.info '--input_file     STRING              Input file (comma-separated) with 4 columns:'
     log.info '                                     SM(sample name), RG (read_group_ID), pair1 (path to fastq pair 1), '
     log.info '                                     and pair2 (path to fastq pair 2).'
+    log.info '--cram_ref       STRING              Path to CRAM reference in fasta format to perform realigment, the reference must be indexed (samtools faidx)'
     log.info '--output_folder  STRING              Output folder (default: .).'
     log.info '--cpu            INTEGER             Number of cpu used by bwa mem and sambamba (default: 8).'
     log.info '--mem            INTEGER             Size of memory used for alignment (in GB) (default: 32).'
@@ -87,12 +92,14 @@ if (params.help) {
     log.info '--multiqc_config STRING              Config yaml file for multiqc (default : none)'
     log.info '--adapterremoval_opt STRING          Command line options for AdapterRemoval (default : none)'
     log.info '--bwa_mem        STRING              bwa-mem command (default: "bwa-mem2 mem", alternative is "bwa mem")'
+    log.info '--bazam          STRING              Path to bazam program (default: "bazam")'
     log.info ""
     log.info "Flags:"
     log.info '--trim                               Enable adapter sequence trimming'
     log.info '--recalibration                      Performs base quality score recalibration (GATK)'
     log.info '--alt                                Enable alternative contig handling (for reference genome hg38)'
     log.info '--bwa_option_M                       Trigger the -M option in bwa and the corresponding compatibility option in samblaster'
+    log.info '--output_type  STRING                Default is CRAM, but BAM is still supported.'
     log.info ''
     exit 0
 }else {
@@ -107,6 +114,7 @@ if (params.help) {
   log.info "suffix1= ${params.suffix1}"
   log.info "suffix2= ${params.suffix2}"
   log.info "output_folder=${params.output_folder}"
+  log.info "output_type=${params.output_type}"
   log.info "bed=${params.bed}"
   log.info "snp_vcf=${params.snp_vcf}"
   log.info "indel_vcf=${params.indel_vcf}"
@@ -121,6 +129,7 @@ if (params.help) {
   log.info "alt=${params.alt}"
   log.info "trim=${params.trim}"
   log.info "bwa_option_M=${params.bwa_option_M}"
+  log.info "bazam=${params.bazam}"
   log.info "help=${params.help}"
 }
 
@@ -161,6 +170,9 @@ known_indels_index = file( params.indel_vcf+'.tbi' )
 //qualimap feature file
 qualimap_ff = file(params.feature_file)
 
+assert (params.input_file != null | params.input_folder != null) : "please specify input_file or input_folder"
+
+
 mode = 'fastq'
 if(params.input_file){
 Channel.fromPath("${params.input_file}")
@@ -180,20 +192,29 @@ Channel.fromPath("${params.input_file}")
 	readPairs = Channel.fromFilePairs(params.input_folder +"/*{${params.suffix1},${params.suffix2}}" +'.'+ params.fastq_ext)
 			   .map { row -> [ row[0] , 1 , "" , row[1][0], row[1][1] ] }
    }else{
+      //we try CRAM files
     	if (file(params.input_folder).listFiles().findAll { it.name ==~ /.*bam/ }.size() > 0){
         	println "BAM files found, proceed with realignment"; mode ='bam'; files = Channel.fromPath( params.input_folder+'/*.bam' )
         }else{
-        	println "ERROR: input folder contains no fastq nor BAM files"; System.exit(0)
-        }
+          //we try CRAM files
+           if(file(params.input_folder).listFiles().findAll { it.name ==~ /.*cram/ }.size() > 0){
+               println "CRAM files found, proceed with realignment"; mode ='cram'; files = Channel.fromPath( params.input_folder+'/*.cram')
+                 if(params.cram_ref == null){
+                   println "We detected CRAM files for realignment, but the CRAM reference was not set (--cram_ref)"; System.exit(1)
+               }
+         }else{
+        	println "ERROR: input folder contains no fastq nor BAM/CRAM files"; System.exit(1)
+         }
+      }
    }
 }
 
-if(mode=='bam'){
+if(mode=='bam' || mode=='cram'){
   process bam_realignment {
     cpus params.cpu
     memory params.mem+'G'
     tag { file_tag }
-        
+
     if(!params.recalibration) publishDir "${params.output_folder}/BAM/", mode: 'copy'
 
 	input:
@@ -206,9 +227,9 @@ if(mode=='bam'){
   file ref_pac
   file ref_0123
   file ref_bwt8bit
-  file ref_alt 
+  file ref_alt
 	file postaltjs
-     
+
   output:
 	set val(file_tag), file("${file_tag_new}*.bam"), file("${file_tag_new}*.bai")  into bam_bai_files
 
@@ -217,7 +238,7 @@ if(mode=='bam'){
 	file_tag_new=file_tag+'_realigned'
 	if(params.trim) file_tag_new=file_tag_new+'_trimmed'
 	if(params.alt)  file_tag_new=file_tag_new+'_alt'
-	
+
 	if(params.alt==null){
 	  ignorealt='-j'
 	  postalt=''
@@ -240,17 +261,32 @@ if(mode=='bam'){
 	bwa_threads  = [params.cpu.intdiv(2) - 1,1].max()
 	sort_threads = [params.cpu.intdiv(2) - 1,1].max()
 	sort_mem     = params.mem.div(4)
-	'''
-  set -o pipefail
-  samtools collate -uOn 128 !{file_tag}.bam tmp_!{file_tag} | samtools fastq - | !{preproc} !{params.bwa_mem} !{ignorealt} !{bwa_opt} -t!{bwa_threads} -R "@RG\\tID:!{file_tag}\\tSM:!{file_tag}\\t!{params.RG}" -p !{ref} - | !{postalt} samblaster !{samblaster_opt} --addMateTags --ignoreUnmated | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
-  '''
+  if(mode == 'bam'){
+  	'''
+    set -o pipefail
+    bazam -n 1 -bam !{file_tag}.bam | \\
+    !{preproc} !{params.bwa_mem} !{ignorealt} !{bwa_opt} -t!{bwa_threads} -R "@RG\\tID:!{file_tag}\\tSM:!{file_tag}\\t!{params.RG}" -p !{ref} - | \\
+    !{postalt} samblaster !{samblaster_opt} --addMateTags --ignoreUnmated | \\
+    sambamba view -S -f bam -l 0 /dev/stdin | \\
+    sambamba sort -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
+    '''
+  }else{
+    '''
+    set -o pipefail
+    !{bazam} -n 1 -Dsamjdk.reference_fasta=!{params.cram_ref} -bam !{file_tag}.cram | \\
+    !{preproc} !{params.bwa_mem} !{ignorealt} !{bwa_opt} -t!{bwa_threads} -R "@RG\\tID:!{file_tag}\\tSM:!{file_tag}\\t!{params.RG}" -p !{ref} - | \\
+    !{postalt} samblaster !{samblaster_opt} --addMateTags --ignoreUnmated | \\
+    sambamba view -S -f bam -l 0 /dev/stdin | \\
+    sambamba sort -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
+    '''
+  }
   }
 }
 if(mode!='bam'){
   println "fastq mode"
   process fastq_alignment {
     cpus params.cpu
-    memory params.mem+'GB'    
+    memory params.mem+'GB'
     tag { "${file_tag}${read_group}" }
 
   input:
@@ -265,22 +301,22 @@ if(mode!='bam'){
   file ref_dict
   file ref_0123
   file ref_bwt8bit
-  file ref_alt 
+  file ref_alt
 	file postaltjs
-                 
+
   output:
 	set val(file_tag), val(nb_groups), val(read_group),  file("${file_tag_new}*.bam"), file("${file_tag_new}*.bai") into bam_bai_files0
 
 	if(!params.recalibration &  !params.input_file){ publishDir "${params.output_folder}/BAM/", mode: 'copy'	}
 
   shell:
-	file_tag_new=file_tag 
+	file_tag_new=file_tag
 	bwa_threads  = [params.cpu.intdiv(2) - 1,1].max()
   sort_threads = [params.cpu.intdiv(2) - 1,1].max()
   sort_mem     = [params.mem.intdiv(4),1].max()
   file_tag_new=file_tag_new+"${read_group}"
   if(params.trim) file_tag_new=file_tag_new+'_trimmed'
-  if(params.alt)  file_tag_new=file_tag_new+'_alt'	
+  if(params.alt)  file_tag_new=file_tag_new+'_alt'
   if(params.alt==null){
           ignorealt='-j'
           postalt=''
@@ -323,7 +359,7 @@ if(params.input_file){
 
 	bam_bai_files2filter.filter { a -> a[1] > 1  }
                       .set{mult2QC}
-	
+
 	//QC on each run
 	process qualimap_multi {
 	    cpus params.cpu
@@ -359,7 +395,7 @@ if(params.input_file){
 	    input:
 	    file qualimap_results from qualimap_multi_results.collect()
 	    file flagstat_results from flagstat_multi_results.collect()
-      file multiqc_config from ch_config_for_multiqc    
+      file multiqc_config from ch_config_for_multiqc
 
 	    output:
 	    file("*report.html") into multi_output
@@ -394,7 +430,7 @@ if(params.input_file){
         file_tag_new=file_tag_new+"${rgtmp}"
       }
       if(params.trim) file_tag_new=file_tag_new+'_trimmed'
-      if(params.alt)  file_tag_new=file_tag_new+'_alt'	
+      if(params.alt)  file_tag_new=file_tag_new+'_alt'
       if(nb_groups>1){
          merge_threads  = [params.cpu.intdiv(2) - 1,1].max()
 	      sort_threads = [params.cpu.intdiv(2) - 1,1].max()
@@ -428,10 +464,10 @@ println "BQSR"
     cpus params.cpu_BQSR
     memory params.mem_BQSR+'G'
     tag { file_tag }
-    
+
     publishDir "$params.output_folder/BAM/", mode: 'copy', pattern: "*bam*"
     publishDir "$params.output_folder/QC/BAM/BQSR/", mode: 'copy',
-	saveAs: {filename -> 
+	saveAs: {filename ->
 		if (filename.indexOf("table") > 0) "$filename"
 		else if (filename.indexOf("plots") > 0) "$filename"
 		else null
@@ -458,8 +494,8 @@ println "BQSR"
     '''
     gatk BaseRecalibrator --java-options "-Xmx!{params.mem_BQSR}G" -R !{ref} -I !{bam} --known-sites !{known_snps} --known-sites !{known_indels} -O !{file_name}_recal.table
     gatk ApplyBQSR --java-options "-Xmx!{params.mem_BQSR}G" -R !{ref} -I !{bam} --bqsr-recal-file !{file_name}_recal.table -O !{file_tag_new}.bam
-    gatk BaseRecalibrator --java-options "-Xmx!{params.mem_BQSR}G" -R !{ref} -I !{file_tag_new}.bam --known-sites !{known_snps} --known-sites !{known_indels} -O !{file_tag_new}_recal.table		
-    gatk AnalyzeCovariates --java-options "-Xmx!{params.mem_BQSR}G" -before !{file_name}_recal.table -after !{file_tag_new}_recal.table -plots !{file_tag_new}_recalibration_plots.pdf	
+    gatk BaseRecalibrator --java-options "-Xmx!{params.mem_BQSR}G" -R !{ref} -I !{file_tag_new}.bam --known-sites !{known_snps} --known-sites !{known_indels} -O !{file_tag_new}_recal.table
+    gatk AnalyzeCovariates --java-options "-Xmx!{params.mem_BQSR}G" -before !{file_name}_recal.table -after !{file_tag_new}_recal.table -plots !{file_tag_new}_recalibration_plots.pdf
     mv !{file_tag_new}.bai !{file_tag_new}.bam.bai
     '''
     }
@@ -468,6 +504,8 @@ println "BQSR"
 	recal_table_files = Channel.from ( 'NOFILE1', 'NOFILE2' )
 }
 
+
+//These are process that are always executed
 
 process qualimap_final {
     cpus params.cpu

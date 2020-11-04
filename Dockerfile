@@ -23,3 +23,4 @@ COPY environment.yml /
 RUN apt-get update && apt-get install -y procps && apt-get clean -y
 RUN conda env create -n alignment-nf -f /environment.yml && conda clean -a
 ENV PATH /opt/conda/envs/alignment-nf/bin:$PATH
+RUN conda env export --name alignment-nf > alignment-nf-v1.3.yml
