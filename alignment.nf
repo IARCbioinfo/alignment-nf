@@ -225,7 +225,7 @@ if(mode=='bam' || mode=='cram'){
     memory params.mem+'G'
     tag { file_tag }
 
-    if(!params.recalibration) publishDir "${params.output_folder}/BAM/", mode: 'copy'
+    //if(!params.recalibration) publishDir "${params.output_folder}/BAM/", mode: 'copy'
 
 	input:
   //file infile, index from files
@@ -524,7 +524,7 @@ process qualimap_final {
     memory params.mem+'G'
     tag { file_tag }
 
-    publishDir "${params.output_folder}/QC/BAM/qualimap/", mode: 'copy'
+    publishDir "${params.output_folder}/QC/qualimap/", mode: 'copy'
 
     input:
     set val(file_tag), file(bam), file(bai) from final_bam_bai_files
@@ -547,7 +547,7 @@ process multiqc_final {
     cpus 2
     memory '2G'
 
-    publishDir "${params.output_folder}/QC/BAM/", mode: 'copy'
+    publishDir "${params.output_folder}/QC/", mode: 'copy'
 
     input:
     file qualimap_results from qualimap_results.collect()
