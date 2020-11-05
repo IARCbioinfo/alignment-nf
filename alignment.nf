@@ -583,6 +583,7 @@ if(params.output_type == "cram") {
 }else{
   publishDir "${params.output_folder}/BAM/", mode: 'copy'
   ext = "bam"
+  ext_index = "bai"
 }
 
 
@@ -590,7 +591,8 @@ input:
 set val(file_tag), file(bam), file(bai) from bam_bai_to_cram_files
 file(ref) from ch_ref
 output:
-set val(file_tag), file("${file_tag_new}.${ext}"), file("${file_tag_new}.${ext}.${ext_index}") optional true
+//set val(file_tag), file("${file_tag_new}.${ext}"), file("${file_tag_new}.${ext}.${ext_index}") optional true
+set val(file_tag), file("${file_tag_new}.${ext}"), file("${file_tag_new}.${ext}.${ext_index}")
 //set val(file_tag), file("${file_tag_new}.bam"), file("${file_tag_new}.bam.bai") optional true
 script:
 def file_tag_new=file_tag+'_realigned'
