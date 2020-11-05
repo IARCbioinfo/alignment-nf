@@ -155,6 +155,9 @@ ref_ann =  file(params.ref+'.ann')
 ref_amb =  file(params.ref+'.amb')
 ref_pac =  file(params.ref+'.pac')
 ref_dict=  file(params.ref.replaceFirst(/fasta/, "").replaceFirst(/fa/, "") +'dict')
+
+ref_cram = file(params.cram_ref)
+
 if(params.bwa_mem!="bwa-mem2 mem"){
   ref_0123 = file('NO_0123')
   ref_bwt8bit = file('NO_bwt8bit')
@@ -258,6 +261,7 @@ if(mode=='bam' || mode=='cram'){
   file ref_bwt8bit
   file ref_alt
 	file postaltjs
+  file ref_cram
 
   output:
 	set val(file_tag), file("${file_tag_new}*.bam"), file("${file_tag_new}*.bai")  into bam_bai_files, bam_bai_to_cram_files
@@ -302,7 +306,7 @@ if(mode=='bam' || mode=='cram'){
   }else{
     '''
     set -o pipefail
-    bazam -n 1 -Dsamjdk.reference_fasta=!{params.cram_ref} -bam !{file_tag}.cram | \\
+    bazam -n 1 -Dsamjdk.reference_fasta=!{ref_cram} -bam !{file_tag}.cram | \\
     !{preproc} !{params.bwa_mem} !{ignorealt} !{bwa_opt} -t!{bwa_threads} -R "@RG\\tID:!{file_tag}\\tSM:!{file_tag}\\t!{params.RG}" -p !{ref} - | \\
     !{postalt} samblaster !{samblaster_opt} --addMateTags --ignoreUnmated | \\
     sambamba view -S -f bam -l 0 /dev/stdin | \\
