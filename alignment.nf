@@ -46,17 +46,9 @@ params.output_type         = "cram" //default output type is cram
 params.cram_ref = "def.cram.fasta"
 params.bazam = "bazam" //save location in the docker or singularity container
 
-log.info ""
-log.info "--------------------------------------------------------"
-log.info "  alignment-nf 1.3.0: alignment/realignment workflow for whole exome/whole genome sequencing "
-log.info "--------------------------------------------------------"
-log.info "Copyright (C) IARC/WHO"
-log.info "This program comes with ABSOLUTELY NO WARRANTY; for details see LICENSE"
-log.info "This is free software, and you are welcome to redistribute it"
-log.info "under certain conditions; see LICENSE for details."
-log.info "--------------------------------------------------------"
-log.info ""
-
+//we display the header of the tool
+log.info IARC_Header()
+log.info tool_header()
 
 if (params.help) {
     log.info "--------------------------------------------------------"
@@ -105,35 +97,6 @@ if (params.help) {
     exit 0
 }else {
   /* Software information */
-  /*log.info "input_folder=${params.input_folder}"
-  log.info "input_file=${params.input_file}"
-  log.info "ref=${params.ref}"
-  log.info "cpu=${params.cpu}"
-  log.info "mem=${params.mem}"
-  log.info "RG=${params.RG}"
-  log.info "fastq_ext=${params.fastq_ext}"
-  log.info "suffix1= ${params.suffix1}"
-  log.info "suffix2= ${params.suffix2}"
-  log.info "output_folder=${params.output_folder}"
-  log.info "output_type=${params.output_type}"
-  log.info "bed=${params.bed}"
-  log.info "snp_vcf=${params.snp_vcf}"
-  log.info "indel_vcf=${params.indel_vcf}"
-  log.info "postaltjs=${params.postaltjs}"
-  log.info "feature_file=${params.feature_file}"
-  log.info "mem_BQSR=${params.mem_BQSR}"
-  log.info "cpu_BQSR=${params.cpu_BQSR}"
-  log.info "multiqc_config=${params.multiqc_config}"
-  log.info "bwa_mem=${params.bwa_mem}"
-  log.info "adapterremoval_opt=${params.adapterremoval_opt}"
-  log.info "recalibration=${params.recalibration}"
-  log.info "alt=${params.alt}"
-  log.info "trim=${params.trim}"
-  log.info "bwa_option_M=${params.bwa_option_M}"
-  log.info "bazam=${params.bazam}"
-  log.info "Realigment=${params.realigment}"
-  log.info "help=${params.help}" */
-
 //we print the parameters
 log.info "\n"
 log.info "-\033[2m------------------Calling PARAMETERS--------------------\033[0m-"
@@ -407,7 +370,7 @@ if(params.input_file){
 	    memory params.mem+'G'
 	    tag { "${file_tag}${read_group}" }
 
-	    publishDir "${params.output_folder}/QC/BAM/qualimap/", mode: 'copy'
+	    publishDir "${params.output_folder}/QC/RG/qualimap/", mode: 'copy'
 
 	    input:
 	    set val(file_tag), val(nb_groups), val(read_group),  file(bam), file(bai) from mult2QC
@@ -431,7 +394,7 @@ if(params.input_file){
 	    cpus 2
 	    memory '1G'
 
-	    publishDir "${params.output_folder}/QC/BAM/qualimap", mode: 'copy'
+	    publishDir "${params.output_folder}/QC/RG/qualimap", mode: 'copy'
 
 	    input:
 	    file qualimap_results from qualimap_multi_results.collect()
@@ -487,7 +450,10 @@ if(params.input_file){
 	        samblaster_opt='-M '
 	      }
         '''
-	      sambamba merge -t !{merge_threads} -l 0 /dev/stdout !{bam_files} |  sambamba view -h /dev/stdin | samblaster !{samblaster_opt} --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
+	      sambamba merge -t !{merge_threads} -l 0 /dev/stdout !{bam_files} | \\
+        sambamba view -h /dev/stdin | samblaster !{samblaster_opt} --addMateTags | \\
+        sambamba view -S -f bam -l 0 /dev/stdin | \\
+        sambamba sort -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
         '''
       }else{
         '''
@@ -531,10 +497,8 @@ println "BQSR"
 
     shell:
     file_name=bam.baseName
-    file_index=bam.baseName+".bai"
     file_tag_new=file_name+'_BQSRecalibrated'
     '''
-    ln -s !{bai} {file_index}
     gatk BaseRecalibrator --java-options "-Xmx!{params.mem_BQSR}G" -R !{ref} -I !{bam} --known-sites !{known_snps} --known-sites !{known_indels} -O !{file_name}_recal.table
     gatk ApplyBQSR --java-options "-Xmx!{params.mem_BQSR}G" -R !{ref} -I !{bam} --bqsr-recal-file !{file_name}_recal.table -O !{file_tag_new}.bam
     gatk BaseRecalibrator --java-options "-Xmx!{params.mem_BQSR}G" -R !{ref} -I !{file_tag_new}.bam --known-sites !{known_snps} --known-sites !{known_indels} -O !{file_tag_new}_recal.table
@@ -544,9 +508,7 @@ println "BQSR"
     }
 }
 else{
-	//final_bam_bai_files = bam_bai_files
-  //bam2cram = bam_bai_files
-  //we duplicate the bam_bai_files into bam2cram
+  //we duplicate the bam_bai_files into two channels
   bam_bai_files.into {final_bam_bai_files ; bam2cram }
 	recal_table_files = Channel.from ( 'NOFILE1', 'NOFILE2' )
 }
@@ -641,4 +603,26 @@ if(params.output_type == "cram"){
 }
 
 
+}
+
+//this use ANSI colors to make a short tool description
+//useful url: http://www.lihaoyi.com/post/BuildyourownCommandLinewithANSIescapecodes.html
+def tool_header (){
+        return """
+        B\u001b[31;1mW\u001b[33;1mA\u001b[31;1m-MEM\u001b[33;1m : Whole\u001b[32;1m Genome/Exome\u001b[33;1m Alignment\u001b[31;1m (v${workflow.manifest.version})
+        """
+}
+
+
+def IARC_Header (){
+     return  """
+#################################################################################
+# ██╗ █████╗ ██████╗  ██████╗██████╗ ██╗ ██████╗ ██╗███╗   ██╗███████╗ ██████╗  #
+# ██║██╔══██╗██╔══██╗██╔════╝██╔══██╗██║██╔═══██╗██║████╗  ██║██╔════╝██╔═══██╗ #
+# ██║███████║██████╔╝██║     ██████╔╝██║██║   ██║██║██╔██╗ ██║█████╗  ██║   ██║ #
+# ██║██╔══██║██╔══██╗██║     ██╔══██╗██║██║   ██║██║██║╚██╗██║██╔══╝  ██║   ██║ #
+# ██║██║  ██║██║  ██║╚██████╗██████╔╝██║╚██████╔╝██║██║ ╚████║██║     ╚██████╔╝ #
+# ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝╚═════╝ ╚═╝ ╚═════╝ ╚═╝╚═╝  ╚═══╝╚═╝      ╚═════╝  #
+# Nextflow pilelines for cancer genomics.########################################
+"""
 }
