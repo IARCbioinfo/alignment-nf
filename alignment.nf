@@ -571,7 +571,7 @@ process multiqc_final {
 }
 
 
-process convert_to_cram{
+process convert_to_cram {
 
 cpus 4
 memory '10G'
@@ -585,14 +585,14 @@ if(params.output_type == "cram") {
 
 input:
 set val(file_tag), file(bam), file(bai) from bam_bai_to_cram_files
-set val(ref) from ch_ref
+file(ref) from ch_ref
 output:
 set val(file_tag), file("${file_tag_new}.cram"), file("${file_tag_new}.cram.crai") optional true
 set val(file_tag), file("${file_tag_new}.bam"), file("${file_tag_new}.bam.bai") optional true
 script:
 if(params.output_type == "cram"){
   """
-  samtools view -C  -T ${params.ref} ${bam} -o ${file_tag}.cram
+  samtools view -C  -T ${ref} ${bam} -o ${file_tag}.cram
   samtools index ${file_tag}.cram
   """
 }else{
