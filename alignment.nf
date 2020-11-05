@@ -173,7 +173,8 @@ qualimap_ff = file(params.feature_file)
 
 assert (params.input_file != null | params.input_folder != null) : "please specify input_file or input_folder"
 //we create a channel_for_reference
-ch_ref=Channel.value(file(params.ref)).ifEmpty{exit 1, "VCF file not found: ${params.ref}"}
+ch_ref=Channel.value(file(params.ref)).ifEmpty{exit 1, "reference file not found: ${params.ref}"}
+
 mode = 'fastq'
 if(params.input_file){
 Channel.fromPath("${params.input_file}")
