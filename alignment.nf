@@ -595,7 +595,7 @@ output:
 set val(file_tag), file("${file_tag_new}.${ext}"), file("${file_tag_new}.${ext}.${ext_index}")
 //set val(file_tag), file("${file_tag_new}.bam"), file("${file_tag_new}.bam.bai") optional true
 script:
-def file_tag_new=file_tag+'_realigned'
+file_tag_new=file_tag+'_realigned'
 if(params.output_type == "cram"){
   """
   samtools view -C  -T ${ref} ${bam} -o ${file_tag_new}.cram
