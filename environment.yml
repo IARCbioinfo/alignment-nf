@@ -21,3 +21,4 @@ dependencies:
   - adapterremoval=2.3.1
   - bazam=1.0.1        
   - bwa-mem2=2.1
+  - bwakit=0.7.17.dev17
