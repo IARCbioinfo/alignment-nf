@@ -201,7 +201,7 @@ Channel.fromPath("${params.input_file}")
                   .map {path -> [ path.name.replace(".bam",""),path]}
           bams_index = Channel.fromPath( params.input_folder+'/*.bam.bai')
                   .map {  path -> [ path.name.replace(".bam.bai",""), path ] }
-          //we create the chanel       
+          //we create the chanel
           files= bams.join(bams_index)
 
         }else{
@@ -241,7 +241,7 @@ if(mode=='bam' || mode=='cram'){
 	file postaltjs
 
   output:
-	set val(file_tag), file("${file_tag_new}*.bam"), file("${file_tag_new}*.bai")  into bam_bai_files
+	set val(file_tag), file("${file_tag_new}*.bam"), file("${file_tag_new}*.bai")  into bam_bai_files, bam_bai_to_cram_files
 
   shell:
 	file_tag = infile.baseName
@@ -292,7 +292,7 @@ if(mode=='bam' || mode=='cram'){
   }
   }
 }
-if(mode!='bam'){
+if(mode=='fastq'){
   println "fastq mode"
   process fastq_alignment {
     cpus params.cpu
@@ -509,13 +509,14 @@ println "BQSR"
     mv !{file_tag_new}.bai !{file_tag_new}.bam.bai
     '''
     }
-}else{
+}
+else{
 	final_bam_bai_files = bam_bai_files
 	recal_table_files = Channel.from ( 'NOFILE1', 'NOFILE2' )
 }
 
 
-//These are process that are always exe
+//These process are always executed
 
 process qualimap_final {
     cpus params.cpu
@@ -566,4 +567,36 @@ process multiqc_final {
     '''
     multiqc . -n multiqc_qualimap_flagstat_BQSR_report.html !{opt} --comment "WGS/WES final QC report"
     '''
+}
+
+
+process convert_to_cram{
+
+cpus 4
+memory '10G'
+//we generate the final output
+if(params.output_type == "cram") {
+  publishDir "${params.output_folder}/CRAM/", mode: 'copy'
+}else{
+  publishDir "${params.output_folder}/BAM/", mode: 'copy'
+}
+
+
+input:
+set val(file_tag), file(bam), file(bai) from bam_bai_to_cram_files
+output:
+set val(file_tag), file("${file_tag}.cram"), file("${file_tag}.cram.crai") optional true
+set val(file_tag), file("${file_tag}.bam"), file("${file_tag}.bam.bai") optional true
+script:
+if(params.output_type == "cram"){
+  """
+  samtools view -C  -T ${params.ref} ${bam} -o ${file_tag}.cram
+  samtools index ${file_tag}.cram
+  """
+}else{
+  """
+  """
+}
+
+
 }
