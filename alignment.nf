@@ -595,8 +595,8 @@ set val(file_tag), file("${file_tag_new}.${ext}"), file("${file_tag_new}.${ext}.
 script:
 if(params.output_type == "cram"){
   """
-  samtools view -C  -T ${ref} ${bam} -o ${file_tag}.cram
-  samtools index ${file_tag}.cram
+  samtools view -C  -T ${ref} ${bam} -o ${file_tag_new}.cram
+  samtools index ${file_tag_new}.cram
   """
 }else{
   """
