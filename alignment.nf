@@ -260,7 +260,7 @@ if(mode=='bam' || mode=='cram'){
   if(mode == 'bam'){
   	'''
     set -o pipefail
-    bazam -n 1 -bam !{file_tag}.bam | \\
+    bazam -n 1 -Xms2G -Xmx20G  -bam !{file_tag}.bam | \\
     !{preproc} !{params.bwa_mem} !{ignorealt} !{bwa_opt} -t!{bwa_threads} -R "@RG\\tID:!{file_tag}\\tSM:!{file_tag}\\t!{params.RG}" -p !{ref} - | \\
     !{postalt} samblaster !{samblaster_opt} --addMateTags --ignoreUnmated | \\
     sambamba view -S -f bam -l 0 /dev/stdin | \\
@@ -270,7 +270,7 @@ if(mode=='bam' || mode=='cram'){
     '''
     set -o pipefail
     samtools faidx !{ref_cram}
-    bazam -n 1 -Dsamjdk.reference_fasta=!{ref_cram} -bam !{file_tag}.cram | \\
+    bazam -n 1  -Xms2G -Xmx20G -Dsamjdk.reference_fasta=!{ref_cram} -bam !{file_tag}.cram | \\
     !{preproc} !{params.bwa_mem} !{ignorealt} !{bwa_opt} -t!{bwa_threads} -R "@RG\\tID:!{file_tag}\\tSM:!{file_tag}\\t!{params.RG}" -p !{ref} - | \\
     !{postalt} samblaster !{samblaster_opt} --addMateTags --ignoreUnmated | \\
     sambamba view -S -f bam -l 0 /dev/stdin | \\
