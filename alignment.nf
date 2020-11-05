@@ -24,7 +24,7 @@ params.RG           = "PL:ILLUMINA"
 params.fastq_ext    = "fastq.gz"
 params.suffix1      = "_1"
 params.suffix2      = "_2"
-params.output_folder = "./results"
+//params.output_folder = "./results"
 params.bed          = ""
 params.snp_vcf      = "dbsnp.vcf"
 params.indel_vcf    = "Mills_1000G_indels.vcf"
@@ -40,6 +40,7 @@ params.recalibration = null
 params.help         = null
 params.alt          = null
 params.trim         = null
+
 //new variables
 params.output_type         = "cram" //default output type is cram
 params.cram_ref = null
@@ -73,7 +74,7 @@ if (params.help) {
     log.info '                                     SM(sample name), RG (read_group_ID), pair1 (path to fastq pair 1), '
     log.info '                                     and pair2 (path to fastq pair 2).'
     log.info '--cram_ref       STRING              Path to CRAM reference in fasta format to perform realigment, the reference must be indexed (samtools faidx)'
-    log.info '--output_folder  STRING              Output folder (default: .).'
+    log.info '--output_folder  STRING              Output folder (default: "./results").'
     log.info '--cpu            INTEGER             Number of cpu used by bwa mem and sambamba (default: 8).'
     log.info '--mem            INTEGER             Size of memory used for alignment (in GB) (default: 32).'
     log.info '--RG             STRING              Samtools read group specification with "\t" between fields.'
@@ -104,7 +105,7 @@ if (params.help) {
     exit 0
 }else {
   /* Software information */
-  log.info "input_folder=${params.input_folder}"
+  /*log.info "input_folder=${params.input_folder}"
   log.info "input_file=${params.input_file}"
   log.info "ref=${params.ref}"
   log.info "cpu=${params.cpu}"
@@ -130,7 +131,16 @@ if (params.help) {
   log.info "trim=${params.trim}"
   log.info "bwa_option_M=${params.bwa_option_M}"
   log.info "bazam=${params.bazam}"
-  log.info "help=${params.help}"
+  log.info "Realigment=${params.realigment}"
+  log.info "help=${params.help}" */
+
+//we print the parameters
+log.info "\n"
+log.info "-\033[2m------------------Calling PARAMETERS--------------------\033[0m-"
+log.info params.collect{ k,v -> "${k.padRight(18)}: $v"}.join("\n")
+log.info "-\033[2m--------------------------------------------------------\033[0m-"
+log.info "\n"
+//todo: add software versions
 }
 
 //multiqc config file
@@ -194,7 +204,7 @@ Channel.fromPath("${params.input_file}")
 	readPairs = Channel.fromFilePairs(params.input_folder +"/*{${params.suffix1},${params.suffix2}}" +'.'+ params.fastq_ext)
 			   .map { row -> [ row[0] , 1 , "" , row[1][0], row[1][1] ] }
    }else{
-      //we try CRAM files
+      //we try BAM files
     	if (file(params.input_folder).listFiles().findAll { it.name ==~ /.*bam/ }.size() > 0){
         	println "BAM files found, proceed with realignment";
           mode ='bam'
@@ -203,15 +213,23 @@ Channel.fromPath("${params.input_file}")
           bams_index = Channel.fromPath( params.input_folder+'/*.bam.bai')
                   .map {  path -> [ path.name.replace(".bam.bai",""), path ] }
           //we create the chanel
-          files= bams.join(bams_index)
+          files = bams.join(bams_index)
 
         }else{
           //we try CRAM files
            if(file(params.input_folder).listFiles().findAll { it.name ==~ /.*cram/ }.size() > 0){
-               println "CRAM files found, proceed with realignment"; mode ='cram'; files = Channel.fromPath( params.input_folder+'/*.cram')
+               println "CRAM files found, proceed with realignment";
+               mode ='cram';
+               crams = Channel.fromPath( params.input_folder+'/*.cram')
+                        .map {path -> [ path.name.replace(".cram",""),path]}
+               crams_index = Channel.fromPath( params.input_folder+'/*.cram.crai')
+                            .map {  path -> [ path.name.replace(".cram.crai",""), path ] }
+                //we create the chanel prefix .cram .cram.crai
+                files = crams.join(crams_index)
                  if(params.cram_ref == null){
                    println "We detected CRAM files for realignment, but the CRAM reference was not set (--cram_ref)"; System.exit(1)
                }
+
          }else{
         	println "ERROR: input folder contains no fastq nor BAM/CRAM files"; System.exit(1)
          }
@@ -351,13 +369,20 @@ if(mode=='fastq'){
 		'''
     set -o pipefail
     touch !{file_tag_new}.bam.bai
-		!{params.bwa_mem} !{ignorealt} !{bwa_opt} -t!{bwa_threads} -R "@RG\\tID:!{file_tag}!{read_group}\\tSM:!{file_tag}\\t!{params.RG}" !{ref} !{pair1} !{pair2} | !{postalt} samblaster !{samblaster_opt} --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort !{sort_opt} -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
+		!{params.bwa_mem} !{ignorealt} !{bwa_opt} -t!{bwa_threads} -R "@RG\\tID:!{file_tag}!{read_group}\\tSM:!{file_tag}\\t!{params.RG}" !{ref} !{pair1} !{pair2} | \\
+    !{postalt} samblaster !{samblaster_opt} --addMateTags | \\
+    sambamba view -S -f bam -l 0 /dev/stdin | \\
+    sambamba sort !{sort_opt} -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
 		'''
  	}else{
 		'''
     set -o pipefail
     touch !{file_tag_new}.bam.bai
-		AdapterRemoval !{params.adapterremoval_opt} --file1 !{pair1} --file2 !{pair2} --interleaved-output --output1 /dev/stdout | !{params.bwa_mem} !{ignorealt} !{bwa_opt} -t!{bwa_threads} -R "@RG\\tID:!{file_tag}!{read_group}\\tSM:!{file_tag}\\t!{params.RG}" -p !{ref} - | !{postalt} samblaster !{samblaster_opt} --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort !{sort_opt} -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
+		AdapterRemoval !{params.adapterremoval_opt} --file1 !{pair1} --file2 !{pair2} --interleaved-output --output1 /dev/stdout | \\
+    !{params.bwa_mem} !{ignorealt} !{bwa_opt} -t!{bwa_threads} -R "@RG\\tID:!{file_tag}!{read_group}\\tSM:!{file_tag}\\t!{params.RG}" -p !{ref} - | \\
+    !{postalt} samblaster !{samblaster_opt} --addMateTags | \\
+    sambamba view -S -f bam -l 0 /dev/stdin | \\
+    sambamba sort !{sort_opt} -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
 		'''
 	}
      }
@@ -592,14 +617,16 @@ set val(file_tag), file(bam), file(bai) from bam_bai_to_cram_files
 file(ref) from ch_ref
 output:
 //set val(file_tag), file("${file_tag_new}.${ext}"), file("${file_tag_new}.${ext}.${ext_index}") optional true
-set val(file_tag), file("${file_tag_new}.${ext}"), file("${file_tag_new}.${ext}.${ext_index}")
+set val(file_tag), file("${file_name}.${ext}"), file("${file_name}.${ext}.${ext_index}")
 //set val(file_tag), file("${file_tag_new}.bam"), file("${file_tag_new}.bam.bai") optional true
 script:
-file_tag_new=file_tag+'_realigned'
+//file_tag_new=file_tag+'_realigned'
+file_name=bam.baseName
+
 if(params.output_type == "cram"){
   """
-  samtools view -C  -T ${ref} ${bam} -o ${file_tag_new}.cram
-  samtools index ${file_tag_new}.cram
+  samtools view -C  -T ${ref} ${bam} -o ${file_name}.cram
+  samtools index ${file_name}.cram
   """
 }else{
   """
