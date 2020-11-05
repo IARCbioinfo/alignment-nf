@@ -151,7 +151,8 @@ if(params.bwa_mem!="bwa-mem2 mem"){
 }else{
   ref_0123 = file(params.ref+'.0123')
   //ref_bwt2bit = params.ref+'.bwt.2bit.64'
-  ref_bwt8bit = file(params.ref+'.bwt.8bit.32')
+  //ref_bwt8bit = file(params.ref+'.bwt.8bit.32')
+  ref_bwt8bit = file(params.ref+'.bwt.2bit.64')
 }
 //bwa-mem2 files
 if(params.alt){
@@ -194,7 +195,15 @@ Channel.fromPath("${params.input_file}")
    }else{
       //we try CRAM files
     	if (file(params.input_folder).listFiles().findAll { it.name ==~ /.*bam/ }.size() > 0){
-        	println "BAM files found, proceed with realignment"; mode ='bam'; files = Channel.fromPath( params.input_folder+'/*.bam' )
+        	println "BAM files found, proceed with realignment";
+          mode ='bam'
+          bams = Channel.fromPath( params.input_folder+'/*.bam' )
+                  .map {path -> [ path.name.replace(".bam",""),path]}
+          bams_index = Channel.fromPath( params.input_folder+'/*.bam.bai')
+                  .map {  path -> [ path.name.replace(".bam.bai",""), path ] }
+          //we create the chanel       
+          files= bams.join(bams_index)
+
         }else{
           //we try CRAM files
            if(file(params.input_folder).listFiles().findAll { it.name ==~ /.*cram/ }.size() > 0){
@@ -218,7 +227,8 @@ if(mode=='bam' || mode=='cram'){
     if(!params.recalibration) publishDir "${params.output_folder}/BAM/", mode: 'copy'
 
 	input:
-  file infile from files
+  //file infile, index from files
+  set val(id), file(infile), file(infile_index) from files
 	file ref
   file ref_sa
   file ref_bwt
@@ -505,7 +515,7 @@ println "BQSR"
 }
 
 
-//These are process that are always executed
+//These are process that are always exe
 
 process qualimap_final {
     cpus params.cpu
