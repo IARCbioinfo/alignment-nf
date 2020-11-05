@@ -43,7 +43,7 @@ params.trim         = null
 
 //new variables
 params.output_type         = "cram" //default output type is cram
-params.cram_ref = null
+params.cram_ref = "def.cram.fasta"
 params.bazam = "bazam" //save location in the docker or singularity container
 
 log.info ""
@@ -229,7 +229,7 @@ Channel.fromPath("${params.input_file}")
                             .map {  path -> [ path.name.replace(".cram.crai",""), path ] }
                 //we create the chanel prefix .cram .cram.crai
                 files = crams.join(crams_index)
-                 if(params.cram_ref == null){
+                 if(params.cram_ref == "def.cram.fasta"){
                    println "We detected CRAM files for realignment, but the CRAM reference was not set (--cram_ref)"; System.exit(1)
                }
 
@@ -341,7 +341,7 @@ if(mode=='fastq'){
   output:
 	set val(file_tag), val(nb_groups), val(read_group),  file("${file_tag_new}*.bam"), file("${file_tag_new}*.bai") into bam_bai_files0
 
-	if(!params.recalibration &  !params.input_file){ publishDir "${params.output_folder}/BAM/", mode: 'copy'	}
+	//if(!params.recalibration &  !params.input_file){ publishDir "${params.output_folder}/BAM/", mode: 'copy'	}
 
   shell:
 	file_tag_new=file_tag
@@ -457,7 +457,7 @@ if(params.input_file){
       cpus params.cpu
       memory params.mem+'G'
       tag { file_tag }
-      if(!params.recalibration) publishDir "$params.output_folder/BAM/", mode: 'copy', pattern: "*.bam*"
+      //if(!params.recalibration) publishDir "$params.output_folder/BAM/", mode: 'copy', pattern: "*.bam*"
 
       input:
       set val(file_tag), val(nb_groups), val(read_group),  file(bams), file(bais) from bam_bai_grouped4merge
@@ -506,8 +506,8 @@ println "BQSR"
     memory params.mem_BQSR+'G'
     tag { file_tag }
 
-    publishDir "$params.output_folder/BAM/", mode: 'copy', pattern: "*bam*"
-    publishDir "$params.output_folder/QC/BAM/BQSR/", mode: 'copy',
+    //publishDir "$params.output_folder/BAM/", mode: 'copy', pattern: "*bam*"
+    publishDir "$params.output_folder/QC/BQSR/", mode: 'copy',
 	saveAs: {filename ->
 		if (filename.indexOf("table") > 0) "$filename"
 		else if (filename.indexOf("plots") > 0) "$filename"
@@ -527,7 +527,7 @@ println "BQSR"
     output:
     file("*_recal.table") into recal_table_files
     file("*plots.pdf") into recal_plots_files
-    set val(file_tag), file("${file_tag_new}.bam"), file("${file_tag_new}.bam.bai") into final_bam_bai_files
+    set val(file_tag), file("${file_tag_new}.bam"), file("${file_tag_new}.bam.bai") into final_bam_bai_files, bam2cram
 
     shell:
     file_name=bam.baseName
@@ -542,7 +542,10 @@ println "BQSR"
     }
 }
 else{
-	final_bam_bai_files = bam_bai_files
+	//final_bam_bai_files = bam_bai_files
+  //bam2cram = bam_bai_files
+  //we duplicate the bam_bai_files into bam2cram
+  bam_bai_files.into {final_bam_bai_files ; bam2cram }
 	recal_table_files = Channel.from ( 'NOFILE1', 'NOFILE2' )
 }
 
@@ -618,16 +621,13 @@ if(params.output_type == "cram") {
 
 
 input:
-set val(file_tag), file(bam), file(bai) from bam_bai_to_cram_files
+set val(file_tag), file(bam), file(bai) from bam2cram
 file(ref) from ch_ref
 output:
-//set val(file_tag), file("${file_tag_new}.${ext}"), file("${file_tag_new}.${ext}.${ext_index}") optional true
 set val(file_tag), file("${file_name}.${ext}"), file("${file_name}.${ext}.${ext_index}")
-//set val(file_tag), file("${file_tag_new}.bam"), file("${file_tag_new}.bam.bai") optional true
 script:
-//file_tag_new=file_tag+'_realigned'
 file_name=bam.baseName
-
+//BAM->CRAM conversion
 if(params.output_type == "cram"){
   """
   samtools view -C  -T ${ref} ${bam} -o ${file_name}.cram
