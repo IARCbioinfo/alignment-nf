@@ -575,11 +575,14 @@ process convert_to_cram {
 
 cpus 4
 memory '10G'
+def ext = "cram"
+def ext_index = "crai"
 //we generate the final output
 if(params.output_type == "cram") {
   publishDir "${params.output_folder}/CRAM/", mode: 'copy'
 }else{
   publishDir "${params.output_folder}/BAM/", mode: 'copy'
+  ext = "bam"
 }
 
 
@@ -587,8 +590,8 @@ input:
 set val(file_tag), file(bam), file(bai) from bam_bai_to_cram_files
 file(ref) from ch_ref
 output:
-set val(file_tag), file("${file_tag_new}.cram"), file("${file_tag_new}.cram.crai") optional true
-set val(file_tag), file("${file_tag_new}.bam"), file("${file_tag_new}.bam.bai") optional true
+set val(file_tag), file("${file_tag_new}.${ext}"), file("${file_tag_new}.${ext}.${ext_index}") optional true
+//set val(file_tag), file("${file_tag_new}.bam"), file("${file_tag_new}.bam.bai") optional true
 script:
 if(params.output_type == "cram"){
   """
