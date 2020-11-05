@@ -302,7 +302,7 @@ if(mode=='bam' || mode=='cram'){
   }else{
     '''
     set -o pipefail
-    !{bazam} -n 1 -Dsamjdk.reference_fasta=!{params.cram_ref} -bam !{file_tag}.cram | \\
+    bazam -n 1 -Dsamjdk.reference_fasta=!{params.cram_ref} -bam !{file_tag}.cram | \\
     !{preproc} !{params.bwa_mem} !{ignorealt} !{bwa_opt} -t!{bwa_threads} -R "@RG\\tID:!{file_tag}\\tSM:!{file_tag}\\t!{params.RG}" -p !{ref} - | \\
     !{postalt} samblaster !{samblaster_opt} --addMateTags --ignoreUnmated | \\
     sambamba view -S -f bam -l 0 /dev/stdin | \\
