@@ -172,8 +172,8 @@ known_indels_index = file( params.indel_vcf+'.tbi' )
 qualimap_ff = file(params.feature_file)
 
 assert (params.input_file != null | params.input_folder != null) : "please specify input_file or input_folder"
-
-
+//we create a channel_for_reference
+ch_ref=Channel.value(file(params.ref)).ifEmpty{exit 1, "VCF file not found: ${params.ref}"}
 mode = 'fastq'
 if(params.input_file){
 Channel.fromPath("${params.input_file}")
@@ -584,9 +584,10 @@ if(params.output_type == "cram") {
 
 input:
 set val(file_tag), file(bam), file(bai) from bam_bai_to_cram_files
+set val(ref) from ch_ref
 output:
-set val(file_tag), file("${file_tag}.cram"), file("${file_tag}.cram.crai") optional true
-set val(file_tag), file("${file_tag}.bam"), file("${file_tag}.bam.bai") optional true
+set val(file_tag), file("${file_tag_new}.cram"), file("${file_tag_new}.cram.crai") optional true
+set val(file_tag), file("${file_tag_new}.bam"), file("${file_tag_new}.bam.bai") optional true
 script:
 if(params.output_type == "cram"){
   """
