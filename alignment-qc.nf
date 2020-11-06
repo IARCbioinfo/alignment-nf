@@ -7,8 +7,8 @@ log.info tool_header()
 
 //we init some basic parameters
 params.input_folder = null
-params.cpu          = 8
-params.mem          = 32
+params.cpu          = 4
+params.mem          = 10
 params.help         = null
 params.feature_file = 'NO_FILE'
 params.multiqc_config = 'NO_FILE'
