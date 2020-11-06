@@ -265,6 +265,7 @@ if(mode=='bam' || mode=='cram'){
 
 
   if(mode == 'bam'){
+    //todo: kept samtools collect option [def:bazam] for CRAM/BAM
   	'''
     set -o pipefail
     bazam -n 1 -Xms2G -Xmx20G  -bam !{file_tag}.bam | \\
@@ -326,7 +327,7 @@ if(mode=='fastq'){
           postalt=''
   }else{
           ignorealt=''
-          postalt='k8 bwa-postalt.js '+ref+'.alt |'
+          postalt="${params.bwakit_root}/k8 ${params.bwakit_root}/bwa-postalt.js "+ref+".alt |"
   }
 	if(params.bwa_option_M==null){
           bwa_opt=''
