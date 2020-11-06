@@ -19,6 +19,5 @@ dependencies:
   - r-gplots=3.0.3
   - r-gsalib=2.1.0
   - adapterremoval=2.3.1
-  - bazam=1.0.1        
+  - bazam=1.0.1
   - bwa-mem2=2.1
-  - bwakit=0.7.17.dev17

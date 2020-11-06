@@ -40,6 +40,8 @@ params.recalibration = null
 params.help         = null
 params.alt          = null
 params.trim         = null
+//bwakit directory
+params.bwakit_root      = '/opt/conda/envs/alignment-nf/share/bwakit-0.7.15-1/'
 
 //new variables
 params.output_type         = "cram" //default output type is cram
@@ -79,6 +81,7 @@ if (params.help) {
     log.info '--snp_vcf        STRING              Path to SNP VCF from GATK bundle (default: dbsnp.vcf)'
     log.info '--indel_vcf      STRING              Path to indel VCF from GATK bundle (default: Mills_1000G_indels.vcf)'
     log.info '--postaltjs      STRING              Path to postalignment javascript bwa-postalt.js'
+    log.info '--bwakit_root                        Root directory of bwakit'
     log.info '--feature_file   STRING              Path to feature file for qualimap (default: NO_FILE)'
     log.info '--mem_BQSR       INTEGER             Size of memory used for GATK BQSR (in GB) (default: 10)'
     log.info '--cpu_BQSR       INTEGER             Number of cpu used by GATK BQSR (default: 2)'
@@ -240,7 +243,9 @@ if(mode=='bam' || mode=='cram'){
 	  postalt=''
 	}else{
 	  ignorealt=''
-	  postalt='k8 bwa-postalt.js '+ref+'.alt |'
+	  //postalt='k8 bwa-postalt.js '+ref+'.alt |'
+    //heng li code $root/k8 $root/bwa-postalt.js $hla_pre$ARGV[0].alt
+    postalt="${params.bwakit_root}/k8 ${params.bwakit_root}/bwa-postalt.js "+ref+".alt |"
 	}
 	if(params.trim==null){
 	  preproc=''
