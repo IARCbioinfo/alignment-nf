@@ -257,9 +257,13 @@ if(mode=='bam' || mode=='cram'){
 	   bwa_opt='-M '
  	   samblaster_opt='-M '
 	}
-	bwa_threads  = [params.cpu.intdiv(2) - 1,1].max()
-	sort_threads = [params.cpu.intdiv(2) - 1,1].max()
+	//bwa_threads  = [params.cpu.intdiv(2) - 1,1].max()
+//	sort_threads = [params.cpu.intdiv(2) - 1,1].max()
 	sort_mem     = params.mem.div(4)
+  bwa_threads = task.cpus
+  sort_threads = task.cpus
+
+
   if(mode == 'bam'){
   	'''
     set -o pipefail
