@@ -208,10 +208,8 @@ Channel.fromPath("${params.input_file}")
 
 if(mode=='bam' || mode=='cram'){
   process bam_realignment {
-    cpus params.cpu
-    memory params.mem+'G'
     tag { file_tag }
-
+    label 'realn_cram_bam'
     //if(!params.recalibration) publishDir "${params.output_folder}/BAM/", mode: 'copy'
 
 	input:
