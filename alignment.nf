@@ -297,7 +297,7 @@ if(mode=='bam' || mode=='cram'){
     '''
     set -o pipefail
     samtools faidx !{ref_cram}
-    samtools collate -uOn 128 !{file_tag}.bam tmp_!{file_tag} | samtools fastq --reference !{ref_cram} - |  \\
+    samtools collate -uOn 128 !{file_tag}.cram tmp_!{file_tag} | samtools fastq --reference !{ref_cram} - |  \\
     !{preproc} !{params.bwa_mem} !{ignorealt} !{bwa_opt} -t!{bwa_threads} -R "@RG\\tID:!{file_tag}\\tSM:!{file_tag}\\t!{params.RG}" -p !{ref} - | \\
     !{postalt} samblaster !{samblaster_opt} --addMateTags --ignoreUnmated | \\
     sambamba view -S -f bam -l 0 /dev/stdin | \\
