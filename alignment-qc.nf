@@ -7,8 +7,8 @@ log.info tool_header()
 
 //we init some basic parameters
 params.input_folder = null
-params.cpu          = 4
-params.mem          = 10
+params.cpu          = 8
+params.mem          = 32
 params.help         = null
 params.feature_file = 'NO_FILE'
 params.multiqc_config = 'NO_FILE'
@@ -161,6 +161,6 @@ def IARC_Header (){
 # ██║██╔══██║██╔══██╗██║     ██╔══██╗██║██║   ██║██║██║╚██╗██║██╔══╝  ██║   ██║ #
 # ██║██║  ██║██║  ██║╚██████╗██████╔╝██║╚██████╔╝██║██║ ╚████║██║     ╚██████╔╝ #
 # ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝╚═════╝ ╚═╝ ╚═════╝ ╚═╝╚═╝  ╚═══╝╚═╝      ╚═════╝  #
-# Nextflow pilelines for cancer genomics.########################################
+# Nextflow pipelines for cancer genomics.########################################
 """
 }

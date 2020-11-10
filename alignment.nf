@@ -46,7 +46,8 @@ params.bwakit_root      = '/opt/conda/envs/alignment-nf/share/bwakit-0.7.15-1/'
 //new variables
 params.output_type         = "cram" //default output type is cram
 params.cram_ref = "def.cram.fasta"
-params.bazam = "bazam" //save location in the docker or singularity container
+params.bazam = false //use bazam instead of samtools
+params.bazam_path = "bazam" //save location in the docker or singularity container
 
 //we display the header of the tool
 log.info IARC_Header()
@@ -88,7 +89,8 @@ if (params.help) {
     log.info '--multiqc_config STRING              Config yaml file for multiqc (default : none)'
     log.info '--adapterremoval_opt STRING          Command line options for AdapterRemoval (default : none)'
     log.info '--bwa_mem        STRING              bwa-mem command (default: "bwa-mem2 mem", alternative is "bwa mem")'
-    log.info '--bazam          STRING              Path to bazam program (default: "bazam")'
+    log.info '--bazam          BOOL                Activate BAZAM program for CRAM/BAM realignment (default: false)'
+    log.info '--bazam_path     STRING              Path to bazam program (default: "bazam")'
     log.info ""
     log.info "Flags:"
     log.info '--trim                               Enable adapter sequence trimming'
@@ -208,8 +210,11 @@ Channel.fromPath("${params.input_file}")
 
 if(mode=='bam' || mode=='cram'){
   process bam_realignment {
+    //tag { file_tag }
+    cpus params.cpu
+    memory params.mem+'G'
     tag { file_tag }
-    label 'realn_cram_bam'
+    //label 'realn_cram_bam'
     //if(!params.recalibration) publishDir "${params.output_folder}/BAM/", mode: 'copy'
 
 	input:
@@ -258,32 +263,57 @@ if(mode=='bam' || mode=='cram'){
  	   samblaster_opt='-M '
 	}
 	//bwa_threads  = [params.cpu.intdiv(2) - 1,1].max()
-//	sort_threads = [params.cpu.intdiv(2) - 1,1].max()
+  //sort_threads = [params.cpu.intdiv(2) - 1,1].max()
 	sort_mem     = params.mem.div(4)
-  bwa_threads = task.cpus
-  sort_threads = task.cpus
+  bwa_threads = params.cpu
+  sort_threads = params.cpu
 
 
   if(mode == 'bam'){
-    //todo: kept samtools collect option [def:bazam] for CRAM/BAM
-  	'''
+    if(params.bazam == false){
+	//we use samtools collec by default
+     '''
     set -o pipefail
-    bazam -n 1 -Xms2G -Xmx20G  -bam !{file_tag}.bam | \\
+    samtools collate -uOn 128 !{file_tag}.bam tmp_!{file_tag} | samtools fastq - |  \\
     !{preproc} !{params.bwa_mem} !{ignorealt} !{bwa_opt} -t!{bwa_threads} -R "@RG\\tID:!{file_tag}\\tSM:!{file_tag}\\t!{params.RG}" -p !{ref} - | \\
     !{postalt} samblaster !{samblaster_opt} --addMateTags --ignoreUnmated | \\
     sambamba view -S -f bam -l 0 /dev/stdin | \\
     sambamba sort -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
     '''
+    }
+    else{//todo: kept samtools collect option [def:bazam] for CRAM/BAM
+  	'''
+    set -o pipefail
+    !{params.bazam_path} -n 1 -Xms2G -Xmx20G  -bam !{file_tag}.bam | \\
+    !{preproc} !{params.bwa_mem} !{ignorealt} !{bwa_opt} -t!{bwa_threads} -R "@RG\\tID:!{file_tag}\\tSM:!{file_tag}\\t!{params.RG}" -p !{ref} - | \\
+    !{postalt} samblaster !{samblaster_opt} --addMateTags --ignoreUnmated | \\
+    sambamba view -S -f bam -l 0 /dev/stdin | \\
+    sambamba sort -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
+    '''
+   }
   }else{
+    //CRAM->CRAM remapping using samtools
+    if(params.bazam == false){
     '''
     set -o pipefail
     samtools faidx !{ref_cram}
-    bazam -n 1  -Xms2G -Xmx20G -Dsamjdk.reference_fasta=!{ref_cram} -bam !{file_tag}.cram | \\
+    samtools collate -uOn 128 !{file_tag}.bam tmp_!{file_tag} | samtools fastq --reference !{ref_cram} - |  \\
     !{preproc} !{params.bwa_mem} !{ignorealt} !{bwa_opt} -t!{bwa_threads} -R "@RG\\tID:!{file_tag}\\tSM:!{file_tag}\\t!{params.RG}" -p !{ref} - | \\
     !{postalt} samblaster !{samblaster_opt} --addMateTags --ignoreUnmated | \\
     sambamba view -S -f bam -l 0 /dev/stdin | \\
     sambamba sort -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
     '''
+    }else{
+    '''
+    set -o pipefail
+    samtools faidx !{ref_cram}
+    !{params.bazam_path} -n 1  -Xms2G -Xmx20G -Dsamjdk.reference_fasta=!{ref_cram} -bam !{file_tag}.cram | \\
+    !{preproc} !{params.bwa_mem} !{ignorealt} !{bwa_opt} -t!{bwa_threads} -R "@RG\\tID:!{file_tag}\\tSM:!{file_tag}\\t!{params.RG}" -p !{ref} - | \\
+    !{postalt} samblaster !{samblaster_opt} --addMateTags --ignoreUnmated | \\
+    sambamba view -S -f bam -l 0 /dev/stdin | \\
+    sambamba sort -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
+    '''
+    }
   }
   }
 }
@@ -458,7 +488,7 @@ if(params.input_file){
 	        samblaster_opt='-M '
 	      }
         '''
-	      sambamba merge -t !{merge_threads} -l 0 /dev/stdout !{bam_files} | \\
+	sambamba merge -t !{merge_threads} -l 0 /dev/stdout !{bam_files} | \\
         sambamba view -h /dev/stdin | samblaster !{samblaster_opt} --addMateTags | \\
         sambamba view -S -f bam -l 0 /dev/stdin | \\
         sambamba sort -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
@@ -631,6 +661,6 @@ def IARC_Header (){
 # ██║██╔══██║██╔══██╗██║     ██╔══██╗██║██║   ██║██║██║╚██╗██║██╔══╝  ██║   ██║ #
 # ██║██║  ██║██║  ██║╚██████╗██████╔╝██║╚██████╔╝██║██║ ╚████║██║     ╚██████╔╝ #
 # ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝╚═════╝ ╚═╝ ╚═════╝ ╚═╝╚═╝  ╚═══╝╚═╝      ╚═════╝  #
-# Nextflow pilelines for cancer genomics.########################################
+# Nextflow pipelines for cancer genomics.########################################
 """
 }
