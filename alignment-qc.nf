@@ -12,6 +12,7 @@ params.mem          = 32
 params.help         = null
 params.feature_file = 'NO_FILE'
 params.multiqc_config = 'NO_FILE'
+params.ref          = 'hg19.fasta'
 
 if (params.help) {
     log.info "--------------------------------------------------------"
@@ -74,6 +75,8 @@ ch_config_for_multiqc = file(params.multiqc_config)
 //qualimap feature file
 qualimap_ff = file(params.feature_file)
 
+ref     = file(params.ref)
+ref_fai = file(params.ref+'.fai')
 //These process are always executed
 process qualimap_final {
     cpus params.cpu
@@ -85,6 +88,8 @@ process qualimap_final {
     input:
     set val(file_tag), file(bam), file(bai) from final_bam_bai_files
     file qff from qualimap_ff
+    file ref
+    file ref_fai	
 
     output:
     file ("${file_name}") into qualimap_results
@@ -101,9 +106,9 @@ process qualimap_final {
    }else{
      //we have to process cram file
      '''
-     mkfifo inbam
-     samtools view -b !{bam} > inbam &
-     qualimap bamqc -nt !{params.cpu} !{feature} --skip-duplicated -bam inbam --java-mem-size=!{params.mem}G -outdir !{file_name} -outformat html
+     mkfifo !{file_tag}.bam
+     samtools view -T !{ref} -b !{bam} > !{file_tag}.bam &
+     qualimap bamqc -nt !{params.cpu} !{feature} --skip-duplicated -bam !{file_tag}.bam --java-mem-size=!{params.mem}G -outdir !{file_name} -outformat html
      samtools flagstat !{bam} > !{file_name}.stats.txt
      '''
    }
