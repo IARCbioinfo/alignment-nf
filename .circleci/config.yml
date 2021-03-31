@@ -10,6 +10,7 @@ jobs:
                     - run: echo " docker.runOptions = '-u $(id -u):$(id -g)' " > ~/.nextflow/config
                     - run: cd ~/project/ ; docker build -t iarcbioinfo/alignment-nf .
                     - run: cd ; nextflow run ~/project/alignment.nf --help
+                    - run: cd ; nextflow run ~/project/alignment.nf -with-docker iarcbioinfo/alignment-nf --input_folder ~/data_test/FASTQ/ --ref ~/data_test/REF/17_7572000-7591000.fasta --output_folder ~/results_FASTQ/ --cpu 2 --mem 4 --bwa_mem "bwa mem"
                     - run: cd ; nextflow run ~/project/alignment.nf -with-docker iarcbioinfo/alignment-nf --input_folder ~/data_test/BAM/ --ref ~/data_test/REF/17_7572000-7591000.fasta --output_folder ~/results/ --cpu 2 --mem 4 --bwa_mem "bwa mem" -with-dag dag.png 
                     - run: cd ; nextflow run ~/project/alignment.nf -with-docker iarcbioinfo/alignment-nf --input_folder ~/data_test/BAM/ --ref ~/data_test/REF/17_7572000-7591000.fasta --output_folder ~/results/ --cpu 2 --mem 4 -with-dag dag.png 
                     - run: cd ; echo -e "SM\tRG\tpair1\tpair2\nfile1\tRG1\t$HOME/data_test/FASTQ/NA06984_T_1.fastq.gz\t$HOME/data_test/FASTQ/NA06984_T_2.fastq.gz\nfile2\tRG1\t$HOME/data_test/FASTQ/NA06984_T_1.fastq.gz\t$HOME/data_test/FASTQ/NA06984_T_2.fastq.gz" > input.txt ; nextflow run ~/project/alignment.nf -with-docker iarcbioinfo/alignment-nf --input_file input.txt --ref ~/data_test/REF/17_7572000-7591000.fasta --output_folder ~/results/ --cpu 2 --mem 4

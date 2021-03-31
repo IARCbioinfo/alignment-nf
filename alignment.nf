@@ -43,7 +43,7 @@ params.trim         = null
 
 log.info ""
 log.info "--------------------------------------------------------"
-log.info "  alignment-nf 1.2.0: alignment/realignment workflow for whole exome/whole genome sequencing "
+log.info "  alignment-nf 1.2.1: alignment/realignment workflow for whole exome/whole genome sequencing "
 log.info "--------------------------------------------------------"
 log.info "Copyright (C) IARC/WHO"
 log.info "This program comes with ABSOLUTELY NO WARRANTY; for details see LICENSE"
@@ -316,7 +316,7 @@ if(mode!='bam'){
      }
 }
 
-if(params.input_file){
+//if(params.input_file){
   bam_bai_files0.into{bam_bai_2group;bam_bai_files2filter}
   bam_bai_grouped4merge = bam_bai_2group.groupTuple(by: 0)
 	                                      .map{ a -> [a[0],a[2].size(),a[2],a[3],a[4]] }
@@ -418,7 +418,7 @@ if(params.input_file){
         '''
       }
 	}
-}
+//}
 
 if(params.recalibration){
 println "BQSR"
