@@ -316,7 +316,7 @@ if(mode!='bam'){
      }
 }
 
-//if(params.input_file){
+if(mode!='bam'){
   bam_bai_files0.into{bam_bai_2group;bam_bai_files2filter}
   bam_bai_grouped4merge = bam_bai_2group.groupTuple(by: 0)
 	                                      .map{ a -> [a[0],a[2].size(),a[2],a[3],a[4]] }
@@ -418,7 +418,7 @@ if(mode!='bam'){
         '''
       }
 	}
-//}
+}
 
 if(params.recalibration){
 println "BQSR"
