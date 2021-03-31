@@ -43,7 +43,7 @@ params.trim         = null
 
 log.info ""
 log.info "--------------------------------------------------------"
-log.info "  alignment-nf 1.2.1: alignment/realignment workflow for whole exome/whole genome sequencing "
+log.info "  alignment-nf 1.3.0: alignment/realignment workflow for whole exome/whole genome sequencing "
 log.info "--------------------------------------------------------"
 log.info "Copyright (C) IARC/WHO"
 log.info "This program comes with ABSOLUTELY NO WARRANTY; for details see LICENSE"

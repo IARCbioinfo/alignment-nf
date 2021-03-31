@@ -93,7 +93,7 @@ Flags are special parameters without value.
 To run the pipeline on a series of fastq or BAM files in folder *input* and a fasta reference file hg19.fasta, one can type:
   
 ```bash
-nextflow run iarcbioinfo/alignment-nf -r v1.2 -profile singularity  --input_folder input/ --ref hg19.fasta --output_folder output
+nextflow run iarcbioinfo/alignment-nf -r v1.3 -profile singularity  --input_folder input/ --ref hg19.fasta --output_folder output
 ```
 
 To run the pipeline without singularity just remove "-profile singularity". Alternatively, one can run the pipeline using a docker container (-profile docker) the conda receipe containing all required dependencies (-profile conda).
@@ -103,25 +103,25 @@ To run the pipeline without singularity just remove "-profile singularity". Alte
 To use bwa-mem, one can type:
   
 ```bash
-nextflow run iarcbioinfo/alignment-nf -r v1.2 -profile singularity  --input_folder input/ --ref hg19.fasta --output_folder output --bwa_mem "bwa mem"
+nextflow run iarcbioinfo/alignment-nf -r v1.3 -profile singularity  --input_folder input/ --ref hg19.fasta --output_folder output --bwa_mem "bwa mem"
 ```
 
 ### Enable adapter trimming
 To use the adapter trimming step, you must add the ***--trim* option**, as well as satisfy the requirements above mentionned. For example:
 ```bash
-nextflow run iarcbioinfo/alignment-nf -r v1.2 -profile singularity  --input_folder input/ --ref hg19.fasta --output_folder output --trim
+nextflow run iarcbioinfo/alignment-nf -r v1.3 -profile singularity  --input_folder input/ --ref hg19.fasta --output_folder output --trim
 ```
 
 ### Enable ALT mode
 To use the alternative contigs handling mode, you must provide the **path to an ALT aware genome reference** (e.g., hg38) AND add the ***--alt* option**, as well as satisfy the above-mentionned requirements. For example:
 ```bash
-nextflow run iarcbioinfo/alignment-nf -r v1.2 -profile singularity  --input_folder input/ --ref hg19.fasta --output_folder output --postaltjs /user/bin/bwa-0.7.15/bwakit/bwa-postalt.js --alt
+nextflow run iarcbioinfo/alignment-nf -r v1.3 -profile singularity  --input_folder input/ --ref hg19.fasta --output_folder output --postaltjs /user/bin/bwa-0.7.15/bwakit/bwa-postalt.js --alt
 ```
 
 ### Enable base quality score recalibration
 To use the base quality score recalibration step, you must provide the **path to 2 GATK bundle VCF files** with lists of known snps and indels, respectively, AND add the ***--recalibration* option**, as well as satisfy the requirements above mentionned. For example:
 ```bash
-nextflow run iarcbioinfo/alignment-nf -r v1.2 -profile singularity  --input_folder input/ --ref hg19.fasta --output_folder output --snp_vcf GATKbundle/dbsnp.vcf.gz --indel_vcf GATKbundle/Mills_1000G_indels.vcf.gz --recalibration
+nextflow run iarcbioinfo/alignment-nf -r v1.3 -profile singularity  --input_folder input/ --ref hg19.fasta --output_folder output --snp_vcf GATKbundle/dbsnp.vcf.gz --indel_vcf GATKbundle/Mills_1000G_indels.vcf.gz --recalibration
 ```
 
 ## Output 
