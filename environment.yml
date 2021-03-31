@@ -2,14 +2,14 @@ name: alignment
 channels:
   - conda-forge
   - bioconda
-  - defaults
+  #- defaults
 dependencies:
-  - font-ttf-dejavu-sans-mono=2.37
+ # - font-ttf-dejavu-sans-mono=2.37
   - gatk4=4.1.7.0
   - multiqc=1.9
   - qualimap=2.2.2d
   - sambamba=0.7.1
-  - samtools=1.9 #1.10 conflicts with sambamba 0.7.1
+  - samtools=1.9
   - samblaster=0.1.26
   - bwa=0.7.17
   - bwakit=0.7.15
