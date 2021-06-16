@@ -1,0 +1,175 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema",
+    "$id": "https://raw.githubusercontent.com/IARCbioinfo/alignment-nf/master/nextflow_schema.json",
+    "title": "IARCbioinfo alignment-nf pipeline parameters",
+    "description": "This pipeline performs fastq alignment or BAM realignment",
+    "type": "object",
+    "definitions": {
+        "input_output_params": {
+            "title": "Input_output_params",
+            "type": "object",
+            "description": "Input and output parameters",
+            "default": "",
+            "properties": {
+                "input_folder": {
+                    "type": "string",
+                    "description": "Folder containing BAM or fastq files to be aligned"
+                },
+                "input_file": {
+                    "type": "string",
+                    "description": "Input file (comma-separated) with 4 columns: SM (sample name), RG (read group ID), pair1 (first fastq of the pair), and pair2 (second fastq of the pair)."
+                },
+                "fastq_ext": {
+                    "type": "string",
+                    "description": "Extension of fastq files",
+                    "default": "fastq.gz"
+                },
+                "suffix1": {
+                    "type": "string",
+                    "default": "_1",
+                    "description": "Suffix for 1st element of fastq read file pair"
+                },
+                "suffix2": {
+                    "type": "string",
+                    "default": "_2",
+                    "description": "Suffix for 2nd element of fastq read file pair"
+                },
+                "output_folder": {
+                    "type": "string",
+                    "description": "Output folder for aligned BAMs",
+                    "default": "."
+                }
+            }
+        },
+        "computing_params": {
+            "title": "Computing_params",
+            "type": "object",
+            "description": "Computing parameters",
+            "default": "",
+            "properties": {
+                "cpu": {
+                    "type": "integer",
+                    "default": 8,
+                    "description": "Number of cpu used by bwa mem and sambamba"
+                },
+                "cpu_BQSR": {
+                    "type": "integer",
+                    "description": "Number of CPUs used by GATK BQSR",
+                    "default": 2
+                },
+                "mem": {
+                    "type": "integer",
+                    "description": "Size of memory used for alignment (in GB)",
+                    "default": 32
+                },
+                "mem_BQSR": {
+                    "type": "integer",
+                    "description": "Size of memory used for GATK BQSR",
+                    "default": 10
+                }
+            }
+        },
+        "ref_params": {
+            "title": "Ref_params",
+            "type": "object",
+            "description": "Reference parameters",
+            "default": "",
+            "properties": {
+                "ref": {
+                    "type": "string",
+                    "description": "Genome reference fasta file with its index files (.fai, .sa, .bwt, .ann, .amb, .pac, and .dict; in the same directory)",
+                    "default": "hg19.fasta"
+                },
+                "bed": {
+                    "type": "string",
+                    "description": "Bed file with interval list"
+                },
+                "snp_vcf": {
+                    "type": "string",
+                    "default": "dbsnp.vcf",
+                    "description": "Path to SNP VCF from GATK bundle"
+                },
+                "indel_vcf": {
+                    "type": "string",
+                    "default": "Mills_1000G_indels.vcf",
+                    "description": "Path to indel VCF from GATK bundle"
+                }
+            }
+        },
+        "pipeline_params": {
+            "title": "Pipeline_params",
+            "type": "object",
+            "description": "Pipeline parameters",
+            "default": "",
+            "properties": {
+                "RG": {
+                    "type": "string",
+                    "description": "Samtools read group specification with \"\\t\" between fields (for bwa)",
+                    "default": "PL:ILLUMINA"
+                },
+                "postaltjs": {
+                    "type": "string",
+                    "default": "NO_FILE",
+                    "description": "Path to postalignment javascript bwa-postalt.js"
+                },
+                "feature_file": {
+                    "type": "string",
+                    "description": "Path to feature file for qualimap",
+                    "default": "NO_FILE"
+                },
+                "multiqc_config": {
+                    "type": "string",
+                    "description": "Config yaml file for multiqc",
+                    "default": "NO_FILE"
+                },
+                "adapterremoval_opt": {
+                    "type": "string",
+                    "description": "Command line options for AdapterRemoval"
+                },
+                "bwa_mem": {
+                    "type": "string",
+                    "description": "bwa-mem command",
+                    "default": "bwa-mem2 mem",
+                    "enum": [
+                        "bwa-mem2 mem",
+                        "bwa mem"
+                    ]
+                },
+                "trim": {
+                    "type": "boolean",
+                    "description": "Enable adapter sequence trimming"
+                },
+                "recalibration": {
+                    "type": "boolean",
+                    "description": "Perform base quality score recalibration (GATK)"
+                },
+                "alt": {
+                    "type": "boolean",
+                    "description": "Enable alternative contig handling (for reference genome hg38)"
+                },
+                "bwa_option_M": {
+                    "type": "boolean",
+                    "description": "Trigger the -M option in bwa and the corresponding compatibility option in samblaster (marks shorter split hits as secondary)"
+                },
+                "help": {
+                    "type": "boolean",
+                    "description": "Display help"
+                }
+            }
+        }
+    },
+    "allOf": [
+        {
+            "$ref": "#/definitions/input_output_params"
+        },
+        {
+            "$ref": "#/definitions/computing_params"
+        },
+        {
+            "$ref": "#/definitions/ref_params"
+        },
+        {
+            "$ref": "#/definitions/pipeline_params"
+        }
+    ]
+}
