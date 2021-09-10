@@ -141,8 +141,8 @@ if(params.bwa_mem!="bwa-mem2 mem"){
   ref_bwt8bit = file('NO_bwt8bit')
 }else{
   ref_0123 = file(params.ref+'.0123')
-  //ref_bwt2bit = params.ref+'.bwt.2bit.64'
-  ref_bwt8bit = file(params.ref+'.bwt.8bit.32')
+  ref_bwt8bit = file(params.ref+'.bwt.2bit.64')
+  //ref_bwt8bit = file(params.ref+'.bwt.8bit.32')
 }
 //bwa-mem2 files
 if(params.alt){
