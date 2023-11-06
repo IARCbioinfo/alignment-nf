@@ -66,6 +66,7 @@ Nextflow pipeline to perform BAM realignment or fastq alignment and QC, with/wit
 |--mem\_BQSR | 10 | memory for GATK base quality score recalibration |
 |--RG           | PL:ILLUMINA | sequencing information for aligned (for *bwa*)|
 |--fastq_ext    | fastq.gz | extension of fastq files|
+|--ext    | cram | extension of files to realign|
 |--suffix1      | \_1 | suffix for second element of read files pair|
 |--suffix2      | \_2 | suffix for second element of read files pair|
 |--bed    | | bed file with interval list|
