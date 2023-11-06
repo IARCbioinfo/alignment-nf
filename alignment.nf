@@ -40,10 +40,11 @@ params.recalibration = null
 params.help         = null
 params.alt          = null
 params.trim         = null
+params.ext          = "cram"
 
 log.info ""
 log.info "--------------------------------------------------------"
-log.info "  alignment-nf 1.3.0: alignment/realignment workflow for whole exome/whole genome sequencing "
+log.info "  alignment-nf 1.3.1: alignment/realignment workflow for whole exome/whole genome sequencing "
 log.info "--------------------------------------------------------"
 log.info "Copyright (C) IARC/WHO"
 log.info "This program comes with ABSOLUTELY NO WARRANTY; for details see LICENSE"
@@ -61,7 +62,7 @@ if (params.help) {
     log.info 'nextflow run iarcbioinfo/alignment.nf [-with-docker] --input_folder input/ --ref hg19.fasta [OPTIONS]'
     log.info ''
     log.info 'Mandatory arguments:'
-    log.info '--input_folder   FOLDER              Folder containing BAM or fastq files to be aligned.'
+    log.info '--input_folder   FOLDER              Folder containing BAM/CRAM or fastq files to be aligned.'
     log.info '--ref            FILE                Reference fasta file (with index).'
     log.info ""
     log.info 'Optional arguments:'
@@ -75,6 +76,7 @@ if (params.help) {
     log.info '                                         e.g. --RG "PL:ILLUMINA\tDS:custom_read_group".'
     log.info '                                         Default: "PL:ILLUMINA".'
     log.info '--fastq_ext      STRING              Extension of fastq files (default: fastq.gz)'
+    log.info '--ext            STRING              Extension of aligned files (default: cram)'
     log.info '--suffix1        STRING              Suffix of fastq files 1 (default : _1)'
     log.info '--suffix2        STRING              Suffix of fastq files 2 (default : _2)'
     log.info '--bed            STRING              Bed file with interval list'
@@ -104,6 +106,7 @@ if (params.help) {
   log.info "mem=${params.mem}"
   log.info "RG=${params.RG}"
   log.info "fastq_ext=${params.fastq_ext}"
+  log.info "ext=${params.ext}"
   log.info "suffix1= ${params.suffix1}"
   log.info "suffix2= ${params.suffix2}"
   log.info "output_folder=${params.output_folder}"
@@ -180,10 +183,10 @@ Channel.fromPath("${params.input_file}")
 	readPairs = Channel.fromFilePairs(params.input_folder +"/*{${params.suffix1},${params.suffix2}}" +'.'+ params.fastq_ext)
 			   .map { row -> [ row[0] , 1 , "" , row[1][0], row[1][1] ] }
    }else{
-    	if (file(params.input_folder).listFiles().findAll { it.name ==~ /.*bam/ }.size() > 0){
-        	println "BAM files found, proceed with realignment"; mode ='bam'; files = Channel.fromPath( params.input_folder+'/*.bam' )
+    	if (file(params.input_folder).listFiles().findAll { it.name ==~ /.*am/ }.size() > 0){
+        	println "Alignment files found, proceed with realignment"; mode ='bam'; files = Channel.fromPath( params.input_folder+'/*.'+params.ext )
         }else{
-        	println "ERROR: input folder contains no fastq nor BAM files"; System.exit(0)
+        	println "ERROR: input folder contains no fastq nor BAM/CRAM files"; System.exit(0)
         }
    }
 }
@@ -242,7 +245,7 @@ if(mode=='bam'){
 	sort_mem     = params.mem.div(4)
 	'''
   set -o pipefail
-  samtools collate -uOn 128 !{file_tag}.bam tmp_!{file_tag} | samtools fastq - | !{preproc} !{params.bwa_mem} !{ignorealt} !{bwa_opt} -t!{bwa_threads} -R "@RG\\tID:!{file_tag}\\tSM:!{file_tag}\\t!{params.RG}" -p !{ref} - | !{postalt} samblaster !{samblaster_opt} --addMateTags --ignoreUnmated | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
+  samtools collate -uOn 128 !{file_tag}.!{params.ext} tmp_!{file_tag} | samtools fastq - | !{preproc} !{params.bwa_mem} !{ignorealt} !{bwa_opt} -t!{bwa_threads} -R "@RG\\tID:!{file_tag}\\tSM:!{file_tag}\\t!{params.RG}" -p !{ref} - | !{postalt} samblaster !{samblaster_opt} --addMateTags --ignoreUnmated | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
   '''
   }
 }
