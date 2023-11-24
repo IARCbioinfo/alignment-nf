@@ -34,7 +34,7 @@ params.mem_BQSR     = 10
 params.cpu_BQSR     = 2
 params.multiqc_config = 'NO_FILE'
 params.adapterremoval_opt = ""
-params.bwa_mem      = "bwa-mem2 mem"
+params.bwa_mem      = null
 params.bwa_option_M  = null
 params.recalibration = null
 params.help         = null
@@ -86,13 +86,13 @@ if (params.help) {
     log.info '--cpu_BQSR       INTEGER             Number of cpu used by GATK BQSR (default: 2)'
     log.info '--multiqc_config STRING              Config yaml file for multiqc (default : none)'
     log.info '--adapterremoval_opt STRING          Command line options for AdapterRemoval (default : none)'
-    log.info '--bwa_mem        STRING              bwa-mem command (default: "bwa-mem2 mem", alternative is "bwa mem")'
     log.info ""
     log.info "Flags:"
     log.info '--trim                               Enable adapter sequence trimming'
     log.info '--recalibration                      Performs base quality score recalibration (GATK)'
     log.info '--alt                                Enable alternative contig handling (for reference genome hg38)'
     log.info '--bwa_option_M                       Trigger the -M option in bwa and the corresponding compatibility option in samblaster'
+    log.info '--bwa_mem                            Use "bwa mem" command instead of default: "bwa-mem2 mem"'
     log.info ''
     exit 0
 }else {
@@ -124,398 +124,432 @@ if (params.help) {
   log.info "help=${params.help}"
 }
 
+
+
+
+
+
+/***************************************************************************************/
+/************************ handle global parameters *************************************/
+/***************************************************************************************/
+
+ignorealt = params.alt ? '': '-j'
+postalt   = params.alt ? 'k8 bwa-postalt.js '+ref+'.alt |' : ''
+bwa_opt   = params.bwa_option_M ? '-M ' : ''
+samblaster_opt= params.bwa_option_M ? '-M ' : ''
+
 //multiqc config file
 ch_config_for_multiqc = file(params.multiqc_config)
 
-//read files
-ref     = file(params.ref)
-ref_fai = file(params.ref+'.fai')
-ref_sa  = file(params.ref+'.sa')
-ref_bwt =  file(params.ref+'.bwt')
-ref_ann =  file(params.ref+'.ann')
-ref_amb =  file(params.ref+'.amb')
-ref_pac =  file(params.ref+'.pac')
-ref_dict=  file(params.ref.replaceFirst(/fasta/, "").replaceFirst(/fa/, "") +'dict')
-if(params.bwa_mem!="bwa-mem2 mem"){
-  ref_0123 = file('NO_0123')
-  ref_bwt8bit = file('NO_bwt8bit')
-}else{
-  ref_0123 = file(params.ref+'.0123')
-  ref_bwt8bit = file(params.ref+'.bwt.2bit.64')
-  //ref_bwt8bit = file(params.ref+'.bwt.8bit.32')
-}
-//bwa-mem2 files
-if(params.alt){
-  ref_alt = file(params.ref+'.alt')
-}else{
-  ref_alt = file('NO_ALT')
-}
+//reference file and its indexes for bwa
+bwa_ref = tuple file(params.ref), file(params.ref+'.fai'), 
+  file(params.ref+'.sa'), file(params.ref+'.bwt'), 
+  file(params.ref+'.ann'), file(params.ref+'.amb'), file(params.ref+'.pac'), 
+  file(params.ref.replaceFirst(/fasta/, "").replaceFirst(/fa/, "") +'dict'), 
+  params.bwa_mem ? file('NO_0123') : file(params.ref+'.0123'), 
+  params.bwa_mem ? file('NO_bwt8bit') : file(params.ref+'.bwt.2bit.64'), 
+  params.alt ? file(params.ref+'.alt') : file('NO_ALT')
+
 postaltjs = file( params.postaltjs )
 
+//reference file and its indexes for baserecalibration
+bqsr_ref = tuple file(params.ref), file(params.ref+'.fai'), file(params.ref.replaceFirst(/fasta/, "").replaceFirst(/fa/, "") +'dict')
+
 //get know site VCFs from GATK bundle
-known_snps         = file( params.snp_vcf )
-known_snps_index   = file( params.snp_vcf+'.tbi' )
-known_indels       = file( params.indel_vcf )
-known_indels_index = file( params.indel_vcf+'.tbi' )
+known_snps         = tuple file( params.snp_vcf ), file( params.snp_vcf+'.tbi' )
+known_indels       = tuple file( params.indel_vcf ), file( params.indel_vcf+'.tbi' )
 
 //qualimap feature file
 qualimap_ff = file(params.feature_file)
 
-mode = 'fastq'
-if(params.input_file){
-Channel.fromPath("${params.input_file}")
-			.splitCsv(header: true, sep: '\t', strip: true)
-			.map { row -> [row.SM , "_"+row.RG , file(row.pair1), file(row.pair2) ] }
-      .into{readPairs0;readPairs4group}
 
-  readPairsgrouped = readPairs4group.groupTuple(by: 0)
-	                                 .map{ a -> [a[0],a[1].size(),a[1],a[2],a[3]] }
 
-	readPairs = readPairsgrouped.map{ a -> [a[0],a[1]] }
-                            .cross( readPairs0 )
-                            .map{a -> [a[1][0],a[0][1],a[1][1],a[1][2],a[1][3] ] }
-}else{
-   if (file(params.input_folder).listFiles().findAll { it.name ==~ /.*${params.fastq_ext}/ }.size() > 0){
-    	println "fastq files found, proceed with alignment"
-	readPairs = Channel.fromFilePairs(params.input_folder +"/*{${params.suffix1},${params.suffix2}}" +'.'+ params.fastq_ext)
-			   .map { row -> [ row[0] , 1 , "" , row[1][0], row[1][1] ] }
-   }else{
-    	if (file(params.input_folder).listFiles().findAll { it.name ==~ /.*bam/ }.size() > 0){
-        	println "BAM files found, proceed with realignment"; mode ='bam'; files = Channel.fromPath( params.input_folder+'/*.bam' )
-        }else{
-        	println "ERROR: input folder contains no fastq nor BAM files"; System.exit(0)
-        }
-   }
-}
 
-if(mode=='bam'){
-  process bam_realignment {
-    cpus params.cpu
-    memory params.mem+'G'
-    tag { file_tag }
-        
-    if(!params.recalibration) publishDir "${params.output_folder}/BAM/", mode: 'copy'
 
-	input:
-  file infile from files
-	file ref
-  file ref_sa
-  file ref_bwt
-  file ref_ann
-  file ref_amb
-  file ref_pac
-  file ref_0123
-  file ref_bwt8bit
-  file ref_alt 
-	file postaltjs
-     
-  output:
-	set val(file_tag), file("${file_tag_new}*.bam"), file("${file_tag_new}*.bai")  into bam_bai_files
+/***************************************************************************************/
+/************************  Process : fastq_alignment ***********************************/
+/***************************************************************************************/
 
-  shell:
-	file_tag = infile.baseName
-	file_tag_new=file_tag+'_realigned'
-	if(params.trim) file_tag_new=file_tag_new+'_trimmed'
-	if(params.alt)  file_tag_new=file_tag_new+'_alt'
-	
-	if(params.alt==null){
-	  ignorealt='-j'
-	  postalt=''
-	}else{
-	  ignorealt=''
-	  postalt='k8 bwa-postalt.js '+ref+'.alt |'
-	}
-	if(params.trim==null){
-	  preproc=''
-	}else{
-	  preproc="AdapterRemoval ${params.adapterremoval_opt} --interleaved --file1 /dev/stdin --output1 /dev/stdout |"
-	}
-	if(params.bwa_option_M==null){
-	  bwa_opt=''
-    samblaster_opt=''
-	}else{
-	   bwa_opt='-M '
- 	   samblaster_opt='-M '
-	}
-	bwa_threads  = [params.cpu.intdiv(2) - 1,1].max()
-	sort_threads = [params.cpu.intdiv(2) - 1,1].max()
-	sort_mem     = params.mem.div(4)
-	'''
-  set -o pipefail
-  samtools collate -uOn 128 !{file_tag}.bam tmp_!{file_tag} | samtools fastq - | !{preproc} !{params.bwa_mem} !{ignorealt} !{bwa_opt} -t!{bwa_threads} -R "@RG\\tID:!{file_tag}\\tSM:!{file_tag}\\t!{params.RG}" -p !{ref} - | !{postalt} samblaster !{samblaster_opt} --addMateTags --ignoreUnmated | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
-  '''
-  }
-}
-if(mode!='bam'){
-  println "fastq mode"
-  process fastq_alignment {
-    cpus params.cpu
-    memory params.mem+'GB'    
-    tag { "${file_tag}${read_group}" }
+
+process fastq_alignment {
+
+  cpus params.cpu
+  memory params.mem+'GB'    
+
+  if(!params.recalibration &  !params.input_file){ publishDir "${params.output_folder}/BAM/", mode: 'copy'	}
 
   input:
-  set val(file_tag), val(nb_groups), val(read_group), file(pair1), file(pair2) from readPairs
-  file ref
-  file ref_fai
-  file ref_sa
-  file ref_bwt
-  file ref_ann
-  file ref_amb
-  file ref_pac
-  file ref_dict
-  file ref_0123
-  file ref_bwt8bit
-  file ref_alt 
-	file postaltjs
+    tuple val(file_tag), val(nb_groups), val(read_group), path(pair1), path(pair2)
+    tuple path(ref), path(ref_fai), path(ref_sa), path(ref_bwt), path(ref_ann), path(ref_amb), path(ref_pac), path(ref_dict), path(ref_0123), path(ref_bwt8bit), path(ref_alt)
+    path(postaltjs)
                  
   output:
-	set val(file_tag), val(nb_groups), val(read_group),  file("${file_tag_new}*.bam"), file("${file_tag_new}*.bai") into bam_bai_files0
-
-	if(!params.recalibration &  !params.input_file){ publishDir "${params.output_folder}/BAM/", mode: 'copy'	}
+	  tuple val(file_tag), val(nb_groups), val(read_group), path("${file_tag_new}*.bam"), path("${file_tag_new}*.bai"), emit: bamfiles
 
   shell:
-	file_tag_new=file_tag 
-	bwa_threads  = [params.cpu.intdiv(2) - 1,1].max()
-  sort_threads = [params.cpu.intdiv(2) - 1,1].max()
-  sort_mem     = [params.mem.intdiv(4),1].max()
-  file_tag_new=file_tag_new+"${read_group}"
-  if(params.trim) file_tag_new=file_tag_new+'_trimmed'
-  if(params.alt)  file_tag_new=file_tag_new+'_alt'	
-  if(params.alt==null){
-          ignorealt='-j'
-          postalt=''
-  }else{
-          ignorealt=''
-          postalt='k8 bwa-postalt.js '+ref+'.alt |'
-  }
-	if(params.bwa_option_M==null){
-          bwa_opt=''
-          samblaster_opt=''
-        }else{
-           bwa_opt='-M '
-           samblaster_opt='-M '
-        }
-  if(nb_groups > 1){
-    sort_opt=' -n'
-  }else{
-    sort_opt=''
-  }
-	if(params.trim==null){
-		'''
-    set -o pipefail
-    touch !{file_tag_new}.bam.bai
-		!{params.bwa_mem} !{ignorealt} !{bwa_opt} -t!{bwa_threads} -R "@RG\\tID:!{file_tag}!{read_group}\\tSM:!{file_tag}\\t!{params.RG}" !{ref} !{pair1} !{pair2} | !{postalt} samblaster !{samblaster_opt} --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort !{sort_opt} -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
-		'''
- 	}else{
-		'''
-    set -o pipefail
-    touch !{file_tag_new}.bam.bai
-		AdapterRemoval !{params.adapterremoval_opt} --file1 !{pair1} --file2 !{pair2} --interleaved-output --output1 /dev/stdout | !{params.bwa_mem} !{ignorealt} !{bwa_opt} -t!{bwa_threads} -R "@RG\\tID:!{file_tag}!{read_group}\\tSM:!{file_tag}\\t!{params.RG}" -p !{ref} - | !{postalt} samblaster !{samblaster_opt} --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort !{sort_opt} -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
-		'''
-	}
-     }
+    bwa_threads  = [params.cpu.intdiv(2) - 1,1].max()
+    sort_threads = [params.cpu.intdiv(2) - 1,1].max()
+    sort_mem     = [params.mem.intdiv(4),1].max()
+    file_tag_new = read_group == "" ? file_tag : "${file_tag}_${read_group}"
+    if(params.trim) file_tag_new=file_tag_new+'_trimmed'
+    if(params.alt)  file_tag_new=file_tag_new+'_alt'	
+    sort_opt = nb_groups > 1 ? ' -n' : ''
+    RG = "\"@RG\\tID:$file_tag_new\\tSM:$file_tag\\t$params.RG\""
+
+    if(params.trim==null){
+      """
+      set -o pipefail
+      echo ${file_tag_new}
+      touch ${file_tag_new}.bam.bai
+      $params.bwa_mem $ignorealt $bwa_opt -t$bwa_threads -R $RG $ref $pair1 $pair2 | \
+      $postalt samblaster $samblaster_opt --addMateTags | \
+      sambamba view -S -f bam -l 0 /dev/stdin | \
+      sambamba sort $sort_opt -t $sort_threads -m ${sort_mem}G --tmpdir=${file_tag}_tmp -o ${file_tag_new}.bam /dev/stdin
+      """
+    }else{
+      """
+      set -o pipefail
+      touch ${file_tag_new}.bam.bai
+      AdapterRemoval $params.adapterremoval_opt --file1 $pair1 --file2 $pair2 --interleaved-output --output1 /dev/stdout | \
+      $params.bwa_mem $ignorealt $bwa_opt -t$bwa_threads -R $RG -p ${ref} - | \
+      $postalt samblaster $samblaster_opt --addMateTags | \
+      sambamba view -S -f bam -l 0 /dev/stdin | \
+      sambamba sort $sort_opt -t $sort_threads -m ${sort_mem}G --tmpdir=${file_tag}_tmp -o ${file_tag_new}.bam /dev/stdin
+      """
+    }
+
 }
 
-if(mode!='bam'){
-  bam_bai_files0.into{bam_bai_2group;bam_bai_files2filter}
-  bam_bai_grouped4merge = bam_bai_2group.groupTuple(by: 0)
-	                                      .map{ a -> [a[0],a[2].size(),a[2],a[3],a[4]] }
+/***************************************************************************************/
+/************************  Process : bam_realignment ***********************************/
+/***************************************************************************************/
 
-	bam_bai_files2filter.filter { a -> a[1] > 1  }
-                      .set{mult2QC}
+process bam_realignment {
+  cpus params.cpu
+  memory params.mem+'G'
+        
+  if(!params.recalibration) publishDir "${params.output_folder}/BAM/", mode: 'copy'
+
+	input:
+    path infile
+    tuple path(ref), path(ref_fai), path(ref_sa), path(ref_bwt), path(ref_ann), path(ref_amb), path(ref_pac), path(ref_dict), path(ref_0123), path(ref_bwt8bit), path(ref_alt)
+    path postaltjs
+     
+  output:
+	  tuple val(file_tag), file("${file_tag_new}*.bam"), file("${file_tag_new}*.bai")
+
+  shell:
+	  file_tag = infile.baseName
+	  file_tag_new=file_tag+'_realigned'
+	  if(params.trim) file_tag_new=file_tag_new+'_trimmed'
+	  if(params.alt)  file_tag_new=file_tag_new+'_alt'
+    preproc = params.trim ? "AdapterRemoval $params.adapterremoval_opt --interleaved --file1 /dev/stdin --output1 /dev/stdout |" : ''
+    bwa_threads  = [params.cpu.intdiv(2) - 1,1].max()
+    sort_threads = [params.cpu.intdiv(2) - 1,1].max()
+    sort_mem     = params.mem.div(4)
+    read_group = "@RG\tID:$file_tag$read_group\tSM:$file_tag\t$params.RG"
+    """
+    set -o pipefail
+    samtools collate -uOn 128 ${file_tag}.bam tmp_$file_tag | \
+    samtools fastq - | \
+    $preproc $params.bwa_mem $ignorealt $bwa_opt -t$bwa_threads -R $read_group -p $ref - | \
+    $postalt samblaster $samblaster_opt --addMateTags --ignoreUnmated | \
+    sambamba view -S -f bam -l 0 /dev/stdin | \
+    sambamba sort -t $sort_threads -m ${sort_mem}G --tmpdir=${file_tag}_tmp -o ${file_tag_new}.bam /dev/stdin
+    """
+}
+
+/***************************************************************************************/
+/************************  Process : qualimap_multi ************************************/
+/***************************************************************************************/
+
+process qualimap_multi {
 	
-	//QC on each run
-	process qualimap_multi {
-	    cpus params.cpu
-	    memory params.mem+'G'
-	    tag { "${file_tag}${read_group}" }
+  cpus params.cpu
+	memory params.mem+'G'
 
-	    publishDir "${params.output_folder}/QC/BAM/qualimap/", mode: 'copy'
+	publishDir "${params.output_folder}/QC/BAM/qualimap/", mode: 'copy'
 
-	    input:
-	    set val(file_tag), val(nb_groups), val(read_group),  file(bam), file(bai) from mult2QC
-	    file qff from qualimap_ff
+	input:
+	  tuple val(file_tag), val(nb_groups), val(read_group), path(bam), path(bai)
+	  path(qff)
 
-	    output:
-	    file ("${file_name}") into qualimap_multi_results
-	    file ("${file_name}.stats.txt") into flagstat_multi_results
+	output:
+	  tuple path("${file_name}"), path("${file_name}.stats.txt")
 
-	    shell:
-	    feature = qff.name != 'NO_FILE' ? "--feature-file $qff" : ''
-      file_name = bam.baseName
-	    '''
-	    sambamba sort -t !{params.cpu} -m !{params.mem}G --tmpdir=!{file_name}_tmp -o !{file_name}_COsorted.bam !{bam}
-	    qualimap bamqc -nt !{params.cpu} !{feature} --skip-duplicated -bam !{file_name}_COsorted.bam --java-mem-size=!{params.mem}G -outdir !{file_name} -outformat html
-	    sambamba flagstat -t !{params.cpu} !{bam} > !{file_name}.stats.txt
-	    '''
-	}
-
-	process multiqc_multi {
-	    cpus 2
-	    memory '1G'
-
-	    publishDir "${params.output_folder}/QC/BAM/qualimap", mode: 'copy'
-
-	    input:
-	    file qualimap_results from qualimap_multi_results.collect()
-	    file flagstat_results from flagstat_multi_results.collect()
-      file multiqc_config from ch_config_for_multiqc    
-
-	    output:
-	    file("*report.html") into multi_output
-	    file("multiqc_multiplex_qualimap_flagstat_report_data/") into multi_output_data
-
-	    shell:
-            if( multiqc_config.name=='NO_FILE' ){
-                opt = ""
-            }else{
-                opt = "--config ${multiqc_config}"
-            }
-	    '''
-	    multiqc . -n multiqc_multiplex_qualimap_flagstat_report.html !{opt} --comment "WGS/WES pre-merging QC report"
-	    '''
-	}
-
-	process merge {
-      cpus params.cpu
-      memory params.mem+'G'
-      tag { file_tag }
-      if(!params.recalibration) publishDir "$params.output_folder/BAM/", mode: 'copy', pattern: "*.bam*"
-
-      input:
-      set val(file_tag), val(nb_groups), val(read_group),  file(bams), file(bais) from bam_bai_grouped4merge
-
-      output:
-      set val(file_tag), file("${file_tag_new}.bam"), file("${file_tag_new}.bam.bai") into bam_bai_files
-
-      shell:
-      file_tag_new=file_tag
-      for( rgtmp in read_group ){
-        file_tag_new=file_tag_new+"${rgtmp}"
-      }
-      if(params.trim) file_tag_new=file_tag_new+'_trimmed'
-      if(params.alt)  file_tag_new=file_tag_new+'_alt'	
-      if(nb_groups>1){
-         merge_threads  = [params.cpu.intdiv(2) - 1,1].max()
-	      sort_threads = [params.cpu.intdiv(2) - 1,1].max()
-        sort_mem     = params.mem.div(2)
-	      bam_files=" "
-	      for( bam in bams ){
-        	bam_files=bam_files+" ${bam}"
-        }
-        file_tag_new=file_tag_new+"_merged"
-        if(params.bwa_option_M==null){
-	        samblaster_opt=''
-	      }else{
-	        samblaster_opt='-M '
-	      }
-        '''
-	      sambamba merge -t !{merge_threads} -l 0 /dev/stdout !{bam_files} |  sambamba view -h /dev/stdin | samblaster !{samblaster_opt} --addMateTags | sambamba view -S -f bam -l 0 /dev/stdin | sambamba sort -t !{sort_threads} -m !{sort_mem}G --tmpdir=!{file_tag}_tmp -o !{file_tag_new}.bam /dev/stdin
-        '''
-      }else{
-        '''
-        touch nomerge
-        '''
-      }
-	}
+	shell:
+	  feature = qff.name != 'NO_FILE' ? "--feature-file $qff" : ''
+    file_name = bam.baseName
+	  """
+	  sambamba sort -t $params.cpu -m ${params.mem}G --tmpdir=${file_name}_tmp -o ${file_name}_COsorted.bam $bam
+	  qualimap bamqc -nt $params.cpu $feature --skip-duplicated -bam ${file_name}_COsorted.bam --java-mem-size=${params.mem}G -outdir $file_name -outformat html
+	  sambamba flagstat -t $params.cpu $bam > ${file_name}.stats.txt
+	  """
 }
 
-if(params.recalibration){
-println "BQSR"
+/***************************************************************************************/
+/************************  Process : multiqc_multi *************************************/
+/***************************************************************************************/
 
-// base quality score recalibration
-   process base_quality_score_recalibration {
-    cpus params.cpu_BQSR
-    memory params.mem_BQSR+'G'
-    tag { file_tag }
+process multiqc_multi {
+	
+  cpus 2
+	memory '1G'
+
+	publishDir "${params.output_folder}/QC/BAM/qualimap", mode: 'copy'
+
+	input:
+	  path qualimap_results
+    path multiqc_config
+
+	output:
+    path("*report.html")
+	  path("multiqc_multiplex_qualimap_flagstat_report_data/")
+
+	shell:
+    opt = (multiqc_config.name=='NO_FILE' ) ?  "" : "--config ${multiqc_config}"
+	  """
+	  multiqc . -n multiqc_multiplex_qualimap_flagstat_report.html $opt --comment "WGS/WES pre-merging QC report"
+	  """
+}
+
+
+/***************************************************************************************/
+/************************  Process : merge *********************************************/
+/***************************************************************************************/
+
+process merge_bam {
+      
+  cpus params.cpu
+  memory params.mem+'G'
+
+  if(params.recalibration) publishDir "$params.output_folder/BAM/", mode: 'copy', pattern: "*.bam*"
+
+  input:
+    tuple val(file_tag), val(nb_groups), val(read_group), path(bams), path(bais)
+
+  output:
+    tuple val(file_tag), path("${file_tag_new}.bam"), path("${file_tag_new}.bam.bai")
+
+  shell:
+    file_tag_new=file_tag
+    for( rgtmp in read_group ){
+      file_tag_new=file_tag_new+"${rgtmp}"
+    }
+    if(params.trim) file_tag_new=file_tag_new+'_trimmed'
+    if(params.alt)  file_tag_new=file_tag_new+'_alt'	
+      
+    if(nb_groups>1){
+      merge_threads  = [params.cpu.intdiv(2) - 1,1].max()
+	    sort_threads = [params.cpu.intdiv(2) - 1,1].max()
+      sort_mem     = params.mem.div(2)
+	    bam_files=" "
+	    for( bam in bams ){
+        bam_files=bam_files+" ${bam}"
+      }
+      file_tag_new=file_tag_new+"_merged"
+      """
+	    sambamba merge -t $merge_threads -l 0 /dev/stdout $bam_files | \
+      sambamba view -h /dev/stdin | \
+      samblaster $samblaster_opt --addMateTags | \
+      sambamba view -S -f bam -l 0 /dev/stdin | \
+      sambamba sort -t $sort_threads -m ${sort_mem}G --tmpdir=${file_tag}_tmp -o ${file_tag_new}.bam /dev/stdin
+      """
+    }else{
+      """
+      touch nomerge
+      """
+    }
+}
+
+/***************************************************************************************/
+/************************  Process : mebase_quality_score_recalibrationrge *************/
+/***************************************************************************************/
+
+process base_quality_score_recalibration {
+
+  cpus params.cpu_BQSR
+  memory params.mem_BQSR+'G'
     
-    publishDir "$params.output_folder/BAM/", mode: 'copy', pattern: "*bam*"
-    publishDir "$params.output_folder/QC/BAM/BQSR/", mode: 'copy',
+  publishDir "$params.output_folder/BAM/", mode: 'copy', pattern: "*bam*"
+  publishDir "$params.output_folder/QC/BAM/BQSR/", mode: 'copy',
 	saveAs: {filename -> 
 		if (filename.indexOf("table") > 0) "$filename"
 		else if (filename.indexOf("plots") > 0) "$filename"
 		else null
 	}
 
-    input:
-    set val(file_tag), file(bam), file(bai) from bam_bai_files
-    file known_snps
-    file known_snps_index
-    file known_indels
-    file known_indels_index
-    file ref
-    file ref_fai
-    file ref_dict
+  input:
+    tuple val(file_tag), path(bam), path(bai)
+    tuple path(ref), path(ref_fai), path(ref_dict)
+    tuple path(known_snps), path(known_snps_index)
+    tuple path(known_indels), path(known_indels_index)
+    
+  output:
+    tuple path(file_tag), path("${file_tag_new}.bam"), path("${file_tag_new}.bam.bai"), emit: bamfiles
+    path("*_recal.table"), emit: recal_table_files
+    path("*plots.pdf")
 
-    output:
-    file("*_recal.table") into recal_table_files
-    file("*plots.pdf") into recal_plots_files
-    set val(file_tag), file("${file_tag_new}.bam"), file("${file_tag_new}.bam.bai") into final_bam_bai_files
-
-    shell:
+  shell:
     file_name=bam.baseName
     file_tag_new=file_name+'_BQSRecalibrated'
-    '''
-    gatk BaseRecalibrator --java-options "-Xmx!{params.mem_BQSR}G" -R !{ref} -I !{bam} --known-sites !{known_snps} --known-sites !{known_indels} -O !{file_name}_recal.table
-    gatk ApplyBQSR --java-options "-Xmx!{params.mem_BQSR}G" -R !{ref} -I !{bam} --bqsr-recal-file !{file_name}_recal.table -O !{file_tag_new}.bam
-    gatk BaseRecalibrator --java-options "-Xmx!{params.mem_BQSR}G" -R !{ref} -I !{file_tag_new}.bam --known-sites !{known_snps} --known-sites !{known_indels} -O !{file_tag_new}_recal.table		
-    gatk AnalyzeCovariates --java-options "-Xmx!{params.mem_BQSR}G" -before !{file_name}_recal.table -after !{file_tag_new}_recal.table -plots !{file_tag_new}_recalibration_plots.pdf	
-    mv !{file_tag_new}.bai !{file_tag_new}.bam.bai
-    '''
-    }
-}else{
-	final_bam_bai_files = bam_bai_files
-	recal_table_files = Channel.from ( 'NOFILE1', 'NOFILE2' )
+    """
+    gatk BaseRecalibrator --java-options "-Xmx${params.mem_BQSR}G" -R $ref -I $bam --known-sites $known_snps --known-sites $known_indels -O ${file_name}_recal.table
+    gatk ApplyBQSR --java-options "-Xmx${params.mem_BQSR}G" -R $ref -I $bam --bqsr-recal-file ${file_name}_recal.table -O ${file_tag_new}.bam
+    gatk BaseRecalibrator --java-options "-Xmx${params.mem_BQSR}G" -R $ref -I ${file_tag_new}.bam --known-sites ${known_snps} --known-sites ${known_indels} -O ${file_tag_new}_recal.table		
+    gatk AnalyzeCovariates --java-options "-Xmx${params.mem_BQSR}G" -before ${file_name}_recal.table -after ${file_tag_new}_recal.table -plots ${file_tag_new}_recalibration_plots.pdf	
+    mv ${file_tag_new}.bai ${file_tag_new}.bam.bai
+    """
 }
 
+/***************************************************************************************/
+/************************  Process : qualimap_final ************************************/
+/***************************************************************************************/
 
 process qualimap_final {
-    cpus params.cpu
-    memory params.mem+'G'
-    tag { file_tag }
+  
+  cpus params.cpu
+  memory params.mem+'G'
 
-    publishDir "${params.output_folder}/QC/BAM/qualimap/", mode: 'copy'
+  publishDir "${params.output_folder}/QC/BAM/qualimap/", mode: 'copy'
 
-    input:
-    set val(file_tag), file(bam), file(bai) from final_bam_bai_files
-    file qff from qualimap_ff
+  input:
+    tuple val(file_tag), path(bam), path(bai)
+    path(qff)
 
-    output:
-    file ("${file_name}") into qualimap_results
-    file ("${file_name}.stats.txt") into flagstat_results
+  output:
+    tuple path("$file_name"), path("${file_name}.stats.txt")
 
-    shell:
+  shell:
     feature = qff.name != 'NO_FILE' ? "--feature-file $qff" : ''
     file_name=bam.baseName
-    '''
-    qualimap bamqc -nt !{params.cpu} !{feature} --skip-duplicated -bam !{bam} --java-mem-size=!{params.mem}G -outdir !{file_name} -outformat html
-    sambamba flagstat -t !{params.cpu} !{bam} > !{file_name}.stats.txt
-    '''
+    """
+    qualimap bamqc -nt $params.cpu $feature --skip-duplicated -bam $bam --java-mem-size=${params.mem}G -outdir $file_name -outformat html
+    sambamba flagstat -t $params.cpu $bam > ${file_name}.stats.txt
+    """
 }
+
+/***************************************************************************************/
+/************************  Process : multiqc_final *************************************/
+/***************************************************************************************/
 
 process multiqc_final {
-    cpus 2
-    memory '2G'
+    
+  cpus 2
+  memory '2G'
 
-    publishDir "${params.output_folder}/QC/BAM/", mode: 'copy'
+  publishDir "${params.output_folder}/QC/BAM/", mode: 'copy'
 
-    input:
-    file qualimap_results from qualimap_results.collect()
-    file flagstat_results from flagstat_results.collect()
-    file BQSR_results from recal_table_files.collect()
-    file multiqc_config from ch_config_for_multiqc
+  input:
+    path(qualimap_results)
+    path(BQSR_results)
+    path(multiqc_config)
 
-    output:
-    file("*report.html") into final_output
-    file("multiqc_qualimap_flagstat_BQSR_report_data/") into final_output_data
+  output:
+    file("*report.html")
+    file("multiqc_qualimap_flagstat_BQSR_report_data/")
 
-    shell:
-    if( multiqc_config.name=='NO_FILE' ){
-	opt = ""
-    }else{
-	opt = "--config ${multiqc_config}"
-    }
-    '''
-    multiqc . -n multiqc_qualimap_flagstat_BQSR_report.html !{opt} --comment "WGS/WES final QC report"
-    '''
+  shell:
+    opt = (multiqc_config.name=='NO_FILE') ? "" : "--config ${multiqc_config}"
+    """
+    multiqc . -n multiqc_qualimap_flagstat_BQSR_report.html $opt --comment "WGS/WES final QC report"
+    """
 }
+
+
+
+
+/***************************************************************************************/
+/************************  Workflow : main *********************************************/
+/***************************************************************************************/
+
+
+
+workflow {
+
+  mode='fastq'
+
+  if(params.input_file){
+
+    readPairs = Channel.fromPath(params.input_file).splitCsv(header: true, sep: '\t', strip: true) | map {
+        row ->
+          assert (row.SM != null ) : "Error: SM column is missing, check your input file"
+          assert (row.RG != null ) : "Error: RG column is missing, check your input file"
+          assert (row.pair1 != null ) : "Error: pair1 column is missing, check your input file"
+          assert (row.pair2 != null ) : "Error: pair2 column is missing, check your input file"
+          tuple( row.SM, row.RG, file(row.pair1), file(row.pair2) )} | groupTuple(by:0) | map{
+            row -> tuple(row[0], row[1].size(), row[1], row[2], row[3])} | transpose()
+
+  }else if(params.input_folder){
+    
+    if (file(params.input_folder).listFiles().findAll { it.name ==~ /.*${params.fastq_ext}/ }.size() > 0){
+      
+      println "fastq files found, proceed with alignment"
+      readPairs = Channel.fromFilePairs(params.input_folder +"/*{${params.suffix1},${params.suffix2}}" +'.'+ params.fastq_ext)
+        .map { row -> tuple( row[0] , 1 , "NO_RG" , row[1][0], row[1][1] )}
+
+    }else if (file(params.input_folder).listFiles().findAll { it.name ==~ /.*bam/ }.size() > 0){
+      
+      println "BAM files found, proceed with realignment"
+      files = Channel.fromPath( params.input_folder+'/*.bam' )
+      mode='bam'
+    
+    }else{
+
+      println "ERROR: input folder contains no fastq nor BAM files"; System.exit(0)
+
+    }
+  }
+
+  // bwa alignment
+  if(mode=="fastq"){
+    fastq_alignment(readPairs,bwa_ref,postaltjs)
+    bamfiles = fastq_alignment.out.bamfiles
+
+    // separate standalone bam and bam that need to be merged
+    bamBranch = bamfiles.groupTuple(by:0)
+      .map{ row -> tuple(row[0], row[2].size(), row[2], row[3], row[4])}
+      .branch{ single: it[1]==1
+               multi: it[1]> 1
+      }
+    //bamBranch.single.view()
+    //bamBranch.multi | view()
+
+    // QC and merge bam
+    qualimap_multi( bamfiles.filter{ it[1]>1 }, qualimap_ff)
+    multiqc_multi(qualimap_multi.out.collect(), ch_config_for_multiqc)
+    multi=merge_bam(bamBranch.multi)
+
+    // gather standalone bam files and merged bam files
+    single = bamBranch.single.map{ row -> tuple(row[0], row[3], row[4]) }
+    bamfiles = single.concat(multi)
+
+  } else if(mode=="bam"){
+    bam_realignment(files,bwa_ref,postaltjs)
+    bamfiles = bam_realignment.out.bamfiles
+  }
+  
+  
+
+  // BQSR recalibration
+  if(params.recalibration){
+    
+    base_quality_score_recalibration(bamfiles,bqsr_ref,known_snps,known_indels)
+    bamfiles = base_quality_score_recalibration.out.bamfiles
+    recal_table_files = base_quality_score_recalibration.out.recal_table_files
+  } else {
+    recal_table_files = file("NO_BQSR")
+  }
+
+  // Qualimap 
+  qualimap_final(bamfiles,qualimap_ff)
+
+  // multiqc
+  multiqc_final(qualimap_final.out.collect(), recal_table_files, ch_config_for_multiqc)
+
+
+}
+
+
+
+
