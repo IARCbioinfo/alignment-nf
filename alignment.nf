@@ -25,7 +25,6 @@ params.fastq_ext    = "fastq.gz"
 params.suffix1      = "_1"
 params.suffix2      = "_2"
 params.output_folder = "."
-params.bed          = ""
 params.snp_vcf      = "dbsnp.vcf"
 params.indel_vcf    = "Mills_1000G_indels.vcf"
 params.postaltjs    = "NO_FILE"
@@ -34,7 +33,7 @@ params.mem_BQSR     = 10
 params.cpu_BQSR     = 2
 params.multiqc_config = 'NO_FILE'
 params.adapterremoval_opt = ""
-params.bwa_mem      = null
+params.bwa_mem      = "bwa-mem2 mem"
 params.bwa_option_M  = null
 params.recalibration = null
 params.help         = null
@@ -77,7 +76,6 @@ if (params.help) {
     log.info '--fastq_ext      STRING              Extension of fastq files (default: fastq.gz)'
     log.info '--suffix1        STRING              Suffix of fastq files 1 (default : _1)'
     log.info '--suffix2        STRING              Suffix of fastq files 2 (default : _2)'
-    log.info '--bed            STRING              Bed file with interval list'
     log.info '--snp_vcf        STRING              Path to SNP VCF from GATK bundle (default: dbsnp.vcf)'
     log.info '--indel_vcf      STRING              Path to indel VCF from GATK bundle (default: Mills_1000G_indels.vcf)'
     log.info '--postaltjs      STRING              Path to postalignment javascript bwa-postalt.js'
@@ -107,7 +105,6 @@ if (params.help) {
   log.info "suffix1= ${params.suffix1}"
   log.info "suffix2= ${params.suffix2}"
   log.info "output_folder=${params.output_folder}"
-  log.info "bed=${params.bed}"
   log.info "snp_vcf=${params.snp_vcf}"
   log.info "indel_vcf=${params.indel_vcf}"
   log.info "postaltjs=${params.postaltjs}"
@@ -134,7 +131,7 @@ if (params.help) {
 /***************************************************************************************/
 
 ignorealt = params.alt ? '': '-j'
-postalt   = params.alt ? 'k8 bwa-postalt.js '+ref+'.alt |' : ''
+postalt   = params.alt ? 'k8 bwa-postalt.js '+params.ref+'.alt |' : ''
 bwa_opt   = params.bwa_option_M ? '-M ' : ''
 samblaster_opt= params.bwa_option_M ? '-M ' : ''
 
@@ -146,8 +143,8 @@ bwa_ref = tuple file(params.ref), file(params.ref+'.fai'),
   file(params.ref+'.sa'), file(params.ref+'.bwt'), 
   file(params.ref+'.ann'), file(params.ref+'.amb'), file(params.ref+'.pac'), 
   file(params.ref.replaceFirst(/fasta/, "").replaceFirst(/fa/, "") +'dict'), 
-  params.bwa_mem ? file('NO_0123') : file(params.ref+'.0123'), 
-  params.bwa_mem ? file('NO_bwt8bit') : file(params.ref+'.bwt.2bit.64'), 
+  params.bwa_mem != "bwa-mem2 mem" ? file('NO_0123') : file(params.ref+'.0123'), 
+  params.bwa_mem != "bwa-mem2 mem" ? file('NO_bwt8bit') : file(params.ref+'.bwt.2bit.64'), 
   params.alt ? file(params.ref+'.alt') : file('NO_ALT')
 
 postaltjs = file( params.postaltjs )
@@ -386,7 +383,7 @@ process base_quality_score_recalibration {
     tuple path(known_indels), path(known_indels_index)
     
   output:
-    tuple path(file_tag), path("${file_tag_new}.bam"), path("${file_tag_new}.bam.bai"), emit: bamfiles
+    tuple val(file_tag), path("${file_tag_new}.bam"), path("${file_tag_new}.bam.bai"), emit: bamfiles
     path("*_recal.table"), emit: recal_table_files
     path("*plots.pdf")
 
@@ -396,8 +393,9 @@ process base_quality_score_recalibration {
     """
     gatk BaseRecalibrator --java-options "-Xmx${params.mem_BQSR}G" -R $ref -I $bam --known-sites $known_snps --known-sites $known_indels -O ${file_name}_recal.table
     gatk ApplyBQSR --java-options "-Xmx${params.mem_BQSR}G" -R $ref -I $bam --bqsr-recal-file ${file_name}_recal.table -O ${file_tag_new}.bam
-    gatk BaseRecalibrator --java-options "-Xmx${params.mem_BQSR}G" -R $ref -I ${file_tag_new}.bam --known-sites ${known_snps} --known-sites ${known_indels} -O ${file_tag_new}_recal.table		
-    gatk AnalyzeCovariates --java-options "-Xmx${params.mem_BQSR}G" -before ${file_name}_recal.table -after ${file_tag_new}_recal.table -plots ${file_tag_new}_recalibration_plots.pdf	
+    gatk BaseRecalibrator --java-options "-Xmx${params.mem_BQSR}G" -R $ref -I ${file_tag_new}.bam --known-sites ${known_snps} --known-sites ${known_indels} -O ${file_tag_new}_recal.table
+    gatk AnalyzeCovariates --java-options "-Xmx${params.mem_BQSR}G" -before ${file_name}_recal.table -after ${file_tag_new}_recal.table -plots ${file_tag_new}_recalibration_plots.pdf
+    touch ${file_tag_new}_recalibration_plots.pdf	
     mv ${file_tag_new}.bai ${file_tag_new}.bam.bai
     """
 }
@@ -530,7 +528,6 @@ workflow {
   }
   
   
-
   // BQSR recalibration
   if(params.recalibration){
     
