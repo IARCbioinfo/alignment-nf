@@ -131,7 +131,7 @@ if (params.help) {
 /***************************************************************************************/
 
 ignorealt = params.alt ? '': '-j'
-postalt   = params.alt ? 'k8 bwa-postalt.js '+params.ref+'.alt |' : ''
+postalt   = params.alt ? 'k8 bwa-postalt.js '+ file(params.ref+'.alt').name + ' | ' : ''
 bwa_opt   = params.bwa_option_M ? '-M ' : ''
 samblaster_opt= params.bwa_option_M ? '-M ' : ''
 
@@ -196,7 +196,6 @@ process fastq_alignment {
     if(params.trim==null){
       """
       set -o pipefail
-      echo ${file_tag_new}
       touch ${file_tag_new}.bam.bai
       $params.bwa_mem $ignorealt $bwa_opt -t$bwa_threads -R $RG $ref $pair1 $pair2 | \
       $postalt samblaster $samblaster_opt --addMateTags | \
@@ -293,7 +292,7 @@ process multiqc_multi {
   cpus 2
 	memory '1G'
 
-	publishDir "${params.output_folder}/QC/BAM/qualimap", mode: 'copy'
+	publishDir "${params.output_folder}/QC/BAM/qualimap/", mode: 'copy'
 
 	input:
 	  path qualimap_results
@@ -301,7 +300,7 @@ process multiqc_multi {
 
 	output:
     path("*report.html")
-	  path("multiqc_multiplex_qualimap_flagstat_report_data/")
+	  path("multiqc_*_data/*")
 
 	shell:
     opt = (multiqc_config.name=='NO_FILE' ) ?  "" : "--config ${multiqc_config}"
@@ -445,7 +444,7 @@ process multiqc_final {
 
   output:
     file("*report.html")
-    file("multiqc_qualimap_flagstat_BQSR_report_data/")
+    file("multiqc_*_data/*")
 
   shell:
     opt = (multiqc_config.name=='NO_FILE') ? "" : "--config ${multiqc_config}"
