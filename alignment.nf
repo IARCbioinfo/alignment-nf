@@ -144,8 +144,10 @@ bwa_ref = tuple file(params.ref), file(params.ref+'.fai'),
   file(params.ref+'.ann'), file(params.ref+'.amb'), file(params.ref+'.pac'), 
   file(params.ref.replaceFirst(/fasta/, "").replaceFirst(/fa/, "") +'dict'), 
   params.bwa_mem != "bwa-mem2 mem" ? file('NO_0123') : file(params.ref+'.0123'), 
-  params.bwa_mem != "bwa-mem2 mem" ? file('NO_bwt8bit') : file(params.ref+'.bwt.2bit.64'), 
+  params.bwa_mem != "bwa-mem2 mem" ? file('NO_bwtnbit') : file(params.ref+'*bwt.*bit.*'),
   params.alt ? file(params.ref+'.alt') : file('NO_ALT')
+
+println("${bwa_ref[9]}")
 
 postaltjs = file( params.postaltjs )
 
@@ -340,9 +342,9 @@ process merge_bam {
 	    sort_threads = [params.cpu.intdiv(2) - 1,1].max()
       sort_mem     = params.mem.div(2)
 	    bam_files=" "
-	    for( bam in bams ){
+	    /*for( bam in bams ){
         bam_files=bam_files+" ${bam}"
-      }
+      }*/
       file_tag_new=file_tag_new+"_merged"
       """
 	    sambamba merge -t $merge_threads -l 0 /dev/stdout $bam_files | \
