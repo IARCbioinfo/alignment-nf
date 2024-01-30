@@ -41,6 +41,21 @@ Nextflow pipeline to perform BAM realignment or fastq alignment and QC, with/wit
 
 **A conda receipe, and docker and singularity containers are available with all the tools needed to run the pipeline (see "Usage")**
 
+### Indexes
+13. To create the bwa indexes
+```bash
+singularity exec -B $(pwd):/mnt/ shub://IARCbioinfo/alignment-nf:v1.3 bwa-mem index reference.fasta
+singularity exec -B $(pwd):/mnt/ shub://IARCbioinfo/alignment-nf:v1.3 bwa-mem2 index reference.fasta
+```
+14. To cretae the reference.fai index
+```bash
+singularity exec -B $(pwd):/mnt/ shub://IARCbioinfo/alignment-nf:v1.3 samtools faidx reference.fasta
+```
+15. To create the reference.dict index
+```bash
+singularity exec -B $(pwd):/mnt/ shub://IARCbioinfo/alignment-nf:v1.3 gatk CreateSequenceDictionary -R reference.fasta
+```
+
 ## Input 
  | Type      | Description     |
   |-----------|---------------|

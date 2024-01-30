@@ -1,4 +1,4 @@
-name: alignment2
+name: alignment-nf
 channels:
   - conda-forge
   - bioconda
