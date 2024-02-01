@@ -27,7 +27,7 @@ params.suffix2      = "_2"
 params.output_folder = "."
 params.snp_vcf      = "dbsnp.vcf"
 params.indel_vcf    = "Mills_1000G_indels.vcf"
-params.postaltjs    = "/opt/conda/envs/alignment-nf/share/bwakit-0.7.15-1/bwa-postalt.js"
+params.postaltjs    = null
 params.feature_file = 'NO_FILE'
 params.mem_BQSR     = 10
 params.cpu_BQSR     = 2
@@ -131,7 +131,10 @@ if (params.help) {
 /***************************************************************************************/
 
 ignorealt = params.alt ? '': '-j'
-postalt   = params.alt ? 'k8 bwa-postalt.js '+ file(params.ref+'.alt').name + ' | ' : ''
+postaltjs_path = params.postaltjs ? "" : "/opt/conda/envs/alignment-nf/share/bwakit-0.7.15-1/"
+postalt   = params.alt ? 'k8 '+ postaltjs_path +'bwa-postalt.js '+ file(params.ref+'.alt').name + ' | ' : ''
+postaltjs = params.postaltjs ? file( params.postaltjs ) : file("NO_POSTALTJS")
+
 bwa_opt   = params.bwa_option_M ? '-M ' : ''
 samblaster_opt= params.bwa_option_M ? '-M ' : ''
 
@@ -146,10 +149,6 @@ bwa_ref = tuple file(params.ref), file(params.ref+'.fai'),
   params.bwa_mem != "bwa-mem2 mem" ? file('NO_0123') : file(params.ref+'.0123'), 
   params.bwa_mem != "bwa-mem2 mem" ? file('NO_bwtnbit') : file(params.ref+'*bwt.*bit.*'),
   params.alt ? file(params.ref+'.alt') : file('NO_ALT')
-
-println("${bwa_ref[9]}")
-
-postaltjs = file( params.postaltjs )
 
 //reference file and its indexes for baserecalibration
 bqsr_ref = tuple file(params.ref), file(params.ref+'.fai'), file(params.ref.replaceFirst(/fasta/, "").replaceFirst(/fa/, "") +'dict')
@@ -341,10 +340,7 @@ process merge_bam {
       merge_threads  = [params.cpu.intdiv(2) - 1,1].max()
 	    sort_threads = [params.cpu.intdiv(2) - 1,1].max()
       sort_mem     = params.mem.div(2)
-	    bam_files=" "
-	    /*for( bam in bams ){
-        bam_files=bam_files+" ${bam}"
-      }*/
+      bam_files = bams.join(" ")
       file_tag_new=file_tag_new+"_merged"
       """
 	    sambamba merge -t $merge_threads -l 0 /dev/stdout $bam_files | \
