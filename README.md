@@ -83,7 +83,6 @@ singularity exec -B $(pwd):/mnt/ shub://IARCbioinfo/alignment-nf:v1.3 gatk Creat
 |--fastq_ext    | fastq.gz | extension of fastq files|
 |--suffix1      | \_1 | suffix for second element of read files pair|
 |--suffix2      | \_2 | suffix for second element of read files pair|
-|--bed    | | bed file with interval list|
 |--snp_vcf  | dbsnp.vcf | path to SNP VCF from GATK bundle (default : dbsnp.vcf) |
 |--indel_vcf  | Mills_1000G_indels.vcf | path to indel VCF from GATK bundle (default : Mills_1000G_indels.vcf) |
 |--postaltjs    | bwa-postalt.js" | path to postalignment javascript *bwa-postalt.js*|

@@ -39,6 +39,7 @@ params.recalibration = null
 params.help         = null
 params.alt          = null
 params.trim         = null
+params.mode         = "paired"
 
 log.info ""
 log.info "--------------------------------------------------------"
@@ -160,8 +161,8 @@ known_indels       = tuple file( params.indel_vcf ), file( params.indel_vcf+'.tb
 //qualimap feature file
 qualimap_ff = file(params.feature_file)
 
-
-
+// mode
+addMateTags = (params.mode == 'paired') ? "samblaster $samblaster_opt --addMateTags |" : ""
 
 
 /***************************************************************************************/
@@ -185,6 +186,7 @@ process fastq_alignment {
 	  tuple val(file_tag), val(nb_groups), val(read_group), path("${file_tag_new}*.bam"), path("${file_tag_new}*.bai"), emit: bamfiles
 
   shell:
+    pair2 = (pair2.baseName == 'SINGLE') ? "" : pair2
     bwa_threads  = [params.cpu.intdiv(2) - 1,1].max()
     sort_threads = [params.cpu.intdiv(2) - 1,1].max()
     sort_mem     = [params.mem.intdiv(4),1].max()
@@ -193,13 +195,14 @@ process fastq_alignment {
     if(params.alt)  file_tag_new=file_tag_new+'_alt'	
     sort_opt = nb_groups > 1 ? ' -n' : ''
     RG = "\"@RG\\tID:$file_tag_new\\tSM:$file_tag\\t$params.RG\""
+    
 
     if(params.trim==null){
       """
       set -o pipefail
       touch ${file_tag_new}.bam.bai
       $params.bwa_mem $ignorealt $bwa_opt -t$bwa_threads -R $RG $ref $pair1 $pair2 | \
-      $postalt samblaster $samblaster_opt --addMateTags | \
+      $postalt $addMateTags \
       sambamba view -S -f bam -l 0 /dev/stdin | \
       sambamba sort $sort_opt -t $sort_threads -m ${sort_mem}G --tmpdir=${file_tag}_tmp -o ${file_tag_new}.bam /dev/stdin
       """
@@ -209,7 +212,7 @@ process fastq_alignment {
       touch ${file_tag_new}.bam.bai
       AdapterRemoval $params.adapterremoval_opt --file1 $pair1 --file2 $pair2 --interleaved-output --output1 /dev/stdout | \
       $params.bwa_mem $ignorealt $bwa_opt -t$bwa_threads -R $RG -p ${ref} - | \
-      $postalt samblaster $samblaster_opt --addMateTags | \
+      $postalt $addMateTags \
       sambamba view -S -f bam -l 0 /dev/stdin | \
       sambamba sort $sort_opt -t $sort_threads -m ${sort_mem}G --tmpdir=${file_tag}_tmp -o ${file_tag_new}.bam /dev/stdin
       """
@@ -320,7 +323,7 @@ process merge_bam {
   cpus params.cpu
   memory params.mem+'G'
 
-  if(params.recalibration) publishDir "$params.output_folder/BAM/", mode: 'copy', pattern: "*.bam*"
+  if(!params.recalibration) publishDir "$params.output_folder/BAM/", mode: 'copy', pattern: "*.bam*"
 
   input:
     tuple val(file_tag), val(nb_groups), val(read_group), path(bams), path(bais)
@@ -330,9 +333,6 @@ process merge_bam {
 
   shell:
     file_tag_new=file_tag
-    for( rgtmp in read_group ){
-      file_tag_new=file_tag_new+"${rgtmp}"
-    }
     if(params.trim) file_tag_new=file_tag_new+'_trimmed'
     if(params.alt)  file_tag_new=file_tag_new+'_alt'	
       
@@ -345,7 +345,7 @@ process merge_bam {
       """
 	    sambamba merge -t $merge_threads -l 0 /dev/stdout $bam_files | \
       sambamba view -h /dev/stdin | \
-      samblaster $samblaster_opt --addMateTags | \
+      $addMateTags \
       sambamba view -S -f bam -l 0 /dev/stdin | \
       sambamba sort -t $sort_threads -m ${sort_mem}G --tmpdir=${file_tag}_tmp -o ${file_tag_new}.bam /dev/stdin
       """
@@ -471,8 +471,8 @@ workflow {
           assert (row.SM != null ) : "Error: SM column is missing, check your input file"
           assert (row.RG != null ) : "Error: RG column is missing, check your input file"
           assert (row.pair1 != null ) : "Error: pair1 column is missing, check your input file"
-          assert (row.pair2 != null ) : "Error: pair2 column is missing, check your input file"
-          tuple( row.SM, row.RG, file(row.pair1), file(row.pair2) )} | groupTuple(by:0) | map{
+          //assert (row.pair2 != null ) : "Error: pair2 column is missing, check your input file"
+          tuple( row.SM, row.RG, file(row.pair1), row.pair2 ? file(row.pair2) : file("SINGLE") )} | groupTuple(by:0) | map{
             row -> tuple(row[0], row[1].size(), row[1], row[2], row[3])} | transpose()
 
   }else if(params.input_folder){
