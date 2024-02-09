@@ -175,7 +175,7 @@ process fastq_alignment {
   cpus params.cpu
   memory params.mem+'GB'    
 
-  if(!params.recalibration &  !params.input_file){ publishDir "${params.output_folder}/BAM/", mode: 'copy'	}
+  if(!params.recalibration){ publishDir "${params.output_folder}/BAM/", mode: 'copy'	}
 
   input:
     tuple val(file_tag), val(nb_groups), val(read_group), path(pair1), path(pair2)
