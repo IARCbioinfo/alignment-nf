@@ -133,7 +133,7 @@ if (params.help) {
 
 ignorealt = params.alt ? '': '-j'
 postaltjs_path = params.postaltjs ? params.postaltjs : "/opt/conda/envs/alignment-nf/share/bwakit-0.7.15-1/"
-postalt   = params.alt ? 'k8 bwa-postalt.js '+ file(params.ref+'.alt').name + ' | ' : ''
+postalt   = params.alt ? 'k8 '+ postaltjs_path + 'bwa-postalt.js '+ file(params.ref+'.alt').name + ' | ' : ''
 postaltjs = params.postaltjs ? file( params.postaltjs ) : file("NO_POSTALTJS")
 
 log.info "postaltjs_path=$postaltjs_path"
